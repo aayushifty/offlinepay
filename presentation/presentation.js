@@ -865,26 +865,22 @@ const SLIDES = [
     bullets: [
       {
         icon: '📡',
-        lead: 'Physical Signal Dead Zones:',
-        text: 'Concrete basements, highway valleys, and crowded public transit frequently drop cellular connection right when consumers need to pay.',
+        text: 'Physical Signal Dead Zones',
         glow: 'glow-red'
       },
       {
         icon: '⏳',
-        lead: 'The 3-Way Cloud Handshake Freeze:',
-        text: 'Traditional wallets demand continuous central server sync. A single dropped packet triggers 30-second spinning timeouts that strand buyers.',
+        text: '3-Way Cloud Handshake Timeouts',
         glow: 'glow-orange'
       },
       {
         icon: '🛑',
-        lead: 'Checkout Queue Bottlenecks:',
-        text: 'Stalled digital payments freeze lines at bus doors, canteens, and grocery counters, causing customer and vendor friction.',
+        text: 'Checkout Queue Bottlenecks',
         glow: 'glow-rose'
       },
       {
         icon: '💵',
-        lead: 'Forced Cash Fallback:',
-        text: 'Merchants abandon failed QR scans and demand physical paper notes—reversing Nepal\'s cashless digital adoption.',
+        text: 'Forced Paper Cash Fallbacks',
         glow: 'glow-amber'
       }
     ],
@@ -2369,10 +2365,7 @@ class PresentationApp {
               ${data.bullets.map(b => `
                 <div class="problem-bullet-item ${b.glow || 'glow-red'}">
                   <span class="pbullet-icon-wrapper">${b.icon}</span>
-                  <div class="pbullet-content">
-                    <span class="pbullet-lead">${b.lead}</span>
-                    <span class="pbullet-text">${b.text}</span>
-                  </div>
+                  <span class="pbullet-text">${b.text}</span>
                 </div>
               `).join('')}
             </div>

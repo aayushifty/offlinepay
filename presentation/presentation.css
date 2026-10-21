@@ -1544,80 +1544,69 @@ html, body {
 .problem-bullets-stack {
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 14px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .problem-bullet-item {
   display: flex;
-  align-items: flex-start;
-  gap: 15px;
-  background: rgba(13, 20, 36, 0.72);
+  align-items: center;
+  gap: 16px;
+  background: rgba(13, 20, 36, 0.78);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-left: 4px solid #ef4444;
   border-radius: 14px;
-  padding: 13px 18px;
+  padding: 15px 22px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .problem-bullet-item:hover {
-  transform: translateX(6px);
-  background: rgba(22, 32, 54, 0.9);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.55), 0 0 16px rgba(239, 68, 68, 0.2);
+  transform: translateX(8px);
+  background: rgba(22, 32, 54, 0.94);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.55), 0 0 18px rgba(239, 68, 68, 0.25);
 }
 
 .problem-bullet-item.glow-red {
   border-left-color: #ef4444;
-  box-shadow: inset 3px 0 12px -2px rgba(239, 68, 68, 0.35);
+  box-shadow: inset 3px 0 14px -2px rgba(239, 68, 68, 0.35);
 }
 
 .problem-bullet-item.glow-orange {
   border-left-color: #f97316;
-  box-shadow: inset 3px 0 12px -2px rgba(249, 115, 22, 0.35);
+  box-shadow: inset 3px 0 14px -2px rgba(249, 115, 22, 0.35);
 }
 
 .problem-bullet-item.glow-rose {
   border-left-color: #f43f5e;
-  box-shadow: inset 3px 0 12px -2px rgba(244, 63, 94, 0.35);
+  box-shadow: inset 3px 0 14px -2px rgba(244, 63, 94, 0.35);
 }
 
 .problem-bullet-item.glow-amber {
   border-left-color: #f59e0b;
-  box-shadow: inset 3px 0 12px -2px rgba(245, 158, 11, 0.35);
+  box-shadow: inset 3px 0 14px -2px rgba(245, 158, 11, 0.35);
 }
 
 .pbullet-icon-wrapper {
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
-}
-
-.pbullet-content {
-  flex: 1;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #e2e8f0;
-}
-
-.pbullet-lead {
-  font-weight: 700;
-  color: #ffffff;
-  margin-right: 6px;
-  letter-spacing: -0.01em;
 }
 
 .pbullet-text {
-  font-weight: 400;
-  color: #cbd5e1;
+  flex: 1;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
 }
 
 .problem-right-col {
