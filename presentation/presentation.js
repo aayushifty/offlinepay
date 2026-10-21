@@ -865,24 +865,27 @@ const SLIDES = [
     bullets: [
       {
         icon: '📡',
-        title: 'Physical Signal Dead Zones',
-        tag: 'Zero Reception',
-        theme: 'danger',
-        text: 'Concrete basements, highway valleys & metal public buses constantly block cellular signals, cutting off internet right when consumers need to pay.'
+        lead: 'Physical Signal Dead Zones:',
+        text: 'Concrete basements, highway valleys, and crowded public transit frequently drop cellular connection right when consumers need to pay.',
+        glow: 'glow-red'
       },
       {
         icon: '⏳',
-        title: 'The 3-Way Cloud Handshake Freeze',
-        tag: 'Queue Bottleneck',
-        theme: 'warning',
-        text: 'Traditional wallets require uninterrupted Buyer ↔ Cloud ↔ Merchant communication. A single network drop triggers 30-second spinning timeouts that strand buyers.'
+        lead: 'The 3-Way Cloud Handshake Freeze:',
+        text: 'Traditional wallets demand continuous central server sync. A single dropped packet triggers 30-second spinning timeouts that strand buyers.',
+        glow: 'glow-orange'
+      },
+      {
+        icon: '🛑',
+        lead: 'Checkout Queue Bottlenecks:',
+        text: 'Stalled digital payments freeze lines at bus doors, canteens, and grocery counters, causing customer and vendor friction.',
+        glow: 'glow-rose'
       },
       {
         icon: '💵',
-        title: 'Forced Cash Fallback',
-        tag: 'Adoption Halted',
-        theme: 'amber',
-        text: 'Frustrated by stalled checkout lines and disputed pending debits, merchants reject digital QR scans and demand paper cash—reversing cashless adoption.'
+        lead: 'Forced Cash Fallback:',
+        text: 'Merchants abandon failed QR scans and demand physical paper notes—reversing Nepal\'s cashless digital adoption.',
+        glow: 'glow-amber'
       }
     ],
     prompter: {
@@ -2363,17 +2366,12 @@ class PresentationApp {
             <p class="slide-subtitle">${data.subtitle}</p>
 
             <div class="problem-bullets-stack">
-              ${data.bullets.map((b, idx) => `
-                <div class="problem-bullet-card ${b.theme || 'danger'}" style="animation-delay: ${0.08 + idx * 0.12}s">
-                  <div class="pbullet-icon-box ${b.theme || 'danger'}">
-                    <span class="pbullet-icon">${b.icon}</span>
-                  </div>
-                  <div class="pbullet-body">
-                    <div class="pbullet-header">
-                      <span class="pbullet-title">${b.title}</span>
-                      <span class="pbullet-tag ${b.theme || 'danger'}">${b.tag}</span>
-                    </div>
-                    <p class="pbullet-desc">${b.text}</p>
+              ${data.bullets.map(b => `
+                <div class="problem-bullet-item ${b.glow || 'glow-red'}">
+                  <span class="pbullet-icon-wrapper">${b.icon}</span>
+                  <div class="pbullet-content">
+                    <span class="pbullet-lead">${b.lead}</span>
+                    <span class="pbullet-text">${b.text}</span>
                   </div>
                 </div>
               `).join('')}
@@ -2414,15 +2412,6 @@ class PresentationApp {
                   <div class="kiosk-progress-fill" id="problem-progress-fill"></div>
                 </div>
               </div>
-            </div>
-
-            <div class="kiosk-controls-row">
-              <button class="theater-btn replay-btn" onclick="presentation.replayProblemVideo()" title="Replay Live Recording">
-                🔄 Replay Video
-              </button>
-              <button class="theater-btn next-slide-btn" id="problem-next-btn" onclick="presentation.nextSlide()" title="Proceed to Our Solution [Space or ➔]">
-                <span>Our Solution</span> <span class="theater-arrow">➔</span> <kbd class="kbd-badge">Space</kbd>
-              </button>
             </div>
           </div>
         </div>

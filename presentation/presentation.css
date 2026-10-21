@@ -1539,171 +1539,85 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Slide 1: Attractive Feature Bullet Cards Stack
+   Slide 1: Attractive Keynote Bullet Points
    ───────────────────────────────────────────────────────────── */
 .problem-bullets-stack {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 13px;
   width: 100%;
+  margin-top: 4px;
 }
 
-.problem-bullet-card {
+.problem-bullet-item {
   display: flex;
   align-items: flex-start;
-  gap: 18px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(9, 13, 24, 0.94) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 18px 22px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
-  position: relative;
-  overflow: hidden;
-  animation: pbulletSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes pbulletSlideIn {
-  0% { opacity: 0; transform: translateY(14px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.problem-bullet-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  border-radius: 4px 0 0 4px;
-  transition: width 0.25s ease;
-}
-
-.problem-bullet-card.danger::before {
-  background: linear-gradient(180deg, #ef4444, #dc2626);
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
-}
-
-.problem-bullet-card.warning::before {
-  background: linear-gradient(180deg, #f97316, #ea580c);
-  box-shadow: 0 0 14px rgba(249, 115, 22, 0.7);
-}
-
-.problem-bullet-card.amber::before {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
-}
-
-.problem-bullet-card:hover {
-  transform: translateX(8px);
-  background: linear-gradient(135deg, rgba(24, 34, 58, 0.95) 0%, rgba(14, 21, 38, 0.98) 100%);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65);
-}
-
-.problem-bullet-card:hover::before {
-  width: 6px;
-}
-
-/* Glowing Icon Box */
-.pbullet-icon-box {
-  width: 50px;
-  height: 50px;
+  gap: 15px;
+  background: rgba(13, 20, 36, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 4px solid #ef4444;
   border-radius: 14px;
+  padding: 13px 18px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.problem-bullet-item:hover {
+  transform: translateX(6px);
+  background: rgba(22, 32, 54, 0.9);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.55), 0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+.problem-bullet-item.glow-red {
+  border-left-color: #ef4444;
+  box-shadow: inset 3px 0 12px -2px rgba(239, 68, 68, 0.35);
+}
+
+.problem-bullet-item.glow-orange {
+  border-left-color: #f97316;
+  box-shadow: inset 3px 0 12px -2px rgba(249, 115, 22, 0.35);
+}
+
+.problem-bullet-item.glow-rose {
+  border-left-color: #f43f5e;
+  box-shadow: inset 3px 0 12px -2px rgba(244, 63, 94, 0.35);
+}
+
+.problem-bullet-item.glow-amber {
+  border-left-color: #f59e0b;
+  box-shadow: inset 3px 0 12px -2px rgba(245, 158, 11, 0.35);
+}
+
+.pbullet-icon-wrapper {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
+  margin-top: 2px;
 }
 
-.problem-bullet-card:hover .pbullet-icon-box {
-  transform: scale(1.1);
-}
-
-.pbullet-icon-box.danger {
-  background: radial-gradient(circle at 35% 35%, rgba(239, 68, 68, 0.38) 0%, rgba(153, 27, 27, 0.22) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
-}
-
-.pbullet-icon-box.warning {
-  background: radial-gradient(circle at 35% 35%, rgba(249, 115, 22, 0.38) 0%, rgba(154, 52, 18, 0.22) 100%);
-  border: 1px solid rgba(249, 115, 22, 0.5);
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
-}
-
-.pbullet-icon-box.amber {
-  background: radial-gradient(circle at 35% 35%, rgba(245, 158, 11, 0.38) 0%, rgba(180, 83, 9, 0.22) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
-}
-
-.pbullet-icon {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.pbullet-body {
+.pbullet-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e2e8f0;
 }
 
-.pbullet-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pbullet-title {
-  font-family: var(--font-sans);
-  font-size: 16px;
+.pbullet-lead {
   font-weight: 700;
   color: #ffffff;
+  margin-right: 6px;
   letter-spacing: -0.01em;
 }
 
-.pbullet-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.pbullet-tag.danger {
-  background: rgba(239, 68, 68, 0.22);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.45);
-}
-
-.pbullet-tag.warning {
-  background: rgba(249, 115, 22, 0.22);
-  color: #fed7aa;
-  border: 1px solid rgba(249, 115, 22, 0.45);
-}
-
-.pbullet-tag.amber {
-  background: rgba(245, 158, 11, 0.22);
-  color: #fde68a;
-  border: 1px solid rgba(245, 158, 11, 0.45);
-}
-
-.pbullet-desc {
-  font-family: var(--font-sans);
-  font-size: 14px;
+.pbullet-text {
   font-weight: 400;
   color: #cbd5e1;
-  line-height: 1.5;
-  margin: 0;
 }
 
 .problem-right-col {
