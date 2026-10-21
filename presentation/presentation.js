@@ -2959,7 +2959,9 @@ class PresentationApp {
   }
 
   toggleFullscreen() {
-    const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('fullscreen-mode'));
+    const hasNativeFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const isFS = hasNativeFS || !!this.isSimulatedFS;
+
     if (!isFS) {
       const el = document.documentElement;
       if (el.requestFullscreen) {
@@ -2974,9 +2976,9 @@ class PresentationApp {
         this.setSimulatedFullscreen(true);
       }
     } else {
-      if (document.exitFullscreen && document.fullscreenElement) {
+      if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
-      } else if (document.webkitExitFullscreen && document.webkitFullscreenElement) {
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
         document.webkitExitFullscreen().catch(() => {});
       }
       this.setSimulatedFullscreen(false);
@@ -2993,13 +2995,19 @@ class PresentationApp {
   }
 
   setSimulatedFullscreen(enable) {
-    document.body.classList.toggle('fullscreen-mode', enable);
-    document.documentElement.classList.toggle('fullscreen-mode', enable);
+    this.isSimulatedFS = !!enable;
+    document.body.classList.toggle('fullscreen-mode', this.isSimulatedFS);
+    document.documentElement.classList.toggle('fullscreen-mode', this.isSimulatedFS);
     this.syncFullscreenUI();
   }
 
   syncFullscreenUI() {
-    const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('fullscreen-mode'));
+    const hasNativeFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (!hasNativeFS && !this.isSimulatedFS) {
+      document.body.classList.remove('fullscreen-mode');
+      document.documentElement.classList.remove('fullscreen-mode');
+    }
+    const isFS = hasNativeFS || !!this.isSimulatedFS;
     document.body.classList.toggle('fullscreen-mode', isFS);
     document.documentElement.classList.toggle('fullscreen-mode', isFS);
 
@@ -3449,7 +3457,15 @@ class PresentationApp {
     });
 
     // Browser fullscreen state change listeners
-    const onFullscreenChange = () => this.syncFullscreenUI();
+    const onFullscreenChange = () => {
+      const hasNativeFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!hasNativeFS) {
+        this.isSimulatedFS = false;
+        document.body.classList.remove('fullscreen-mode');
+        document.documentElement.classList.remove('fullscreen-mode');
+      }
+      this.syncFullscreenUI();
+    };
     document.addEventListener('fullscreenchange', onFullscreenChange);
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
     document.addEventListener('mozfullscreenchange', onFullscreenChange);
@@ -3527,6 +3543,14 @@ class PresentationApp {
     window.addEventListener('mousemove', (e) => {
       const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('fullscreen-mode'));
       if (isFS) {
+        const topHud = document.querySelector('.top-hud');
+        if (topHud) {
+          if (e.clientY < 65) {
+            topHud.classList.add('hover-active');
+          } else {
+            topHud.classList.remove('hover-active');
+          }
+        }
         const bottomHud = document.querySelector('.bottom-hud');
         if (bottomHud) {
           if (e.clientY > window.innerHeight - 80) {

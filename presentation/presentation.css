@@ -2002,17 +2002,39 @@ body.fullscreen-mode {
   overflow: hidden;
 }
 
-/* Remove Top HUD, Bottom HUD, and Floating Controls in Fullscreen */
+/* Clean Stage in Fullscreen: HUDs auto-hide but reveal on mouse hover near edges */
 :fullscreen .top-hud,
 :-webkit-full-screen .top-hud,
 body.fullscreen-mode .top-hud {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-24px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+:fullscreen .top-hud.hover-active,
+:-webkit-full-screen .top-hud.hover-active,
+body.fullscreen-mode .top-hud.hover-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 :fullscreen .bottom-hud,
 :-webkit-full-screen .bottom-hud,
 body.fullscreen-mode .bottom-hud {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+:fullscreen .bottom-hud.hover-active,
+:-webkit-full-screen .bottom-hud.hover-active,
+body.fullscreen-mode .bottom-hud.hover-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 :fullscreen .floating-fs-bar,
