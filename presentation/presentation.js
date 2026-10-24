@@ -1201,6 +1201,30 @@ const SLIDES = [
   }
 ];
 
+// Pitch time budget: ?time=<minutes> in the URL, default 5. Split across slides by weight.
+const PITCH_BUDGET_SEC = (() => {
+  const m = parseFloat(new URLSearchParams(location.search).get('time'));
+  return (m > 0 && m < 60 ? m : 5) * 60;
+})();
+const SLIDE_WEIGHTS = [50, 40, 45, 35, 40, 35, 55];
+const SLIDE_TARGETS = (() => {
+  const total = SLIDE_WEIGHTS.reduce((a, b) => a + b, 0);
+  return SLIDE_WEIGHTS.map(w => Math.round((w / total) * PITCH_BUDGET_SEC));
+})();
+const DECK_CHANNEL = 'offlinepay-deck';
+
+function formatClock(sec) {
+  const sign = sec < 0 ? '-' : '';
+  const a = Math.abs(Math.floor(sec));
+  return `${sign}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
+}
+
+function stripTags(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent;
+}
+
 // Helper to add razor-sharp, radiant neon edge outlines on solid 3D geometries
 function addNeonEdges(mesh, colorHex, linewidth = 2) {
   const edges = new THREE.EdgesGeometry(mesh.geometry);
@@ -1257,6 +1281,7 @@ class PresentationApp {
     this.updateResponsiveLayout();
     this.renderSlideUI(0);
     this.startTimer();
+    this.initStageControls();
     this.animate();
   }
 
@@ -2521,6 +2546,8 @@ class PresentationApp {
     }
 
     this.currentSlideIndex = index;
+    this.startPitchClock();
+    this.slideStart = Date.now();
     this.sceneEnterTime = performance.now();
     this.needsVideoClear = true;
     sfx.slideChange();
@@ -2618,7 +2645,7 @@ class PresentationApp {
                     </button>
                   </div>
                 </div>
-                <video id="problem-live-video" src="problem-live.mp4" playsinline preload="auto" onclick="presentation.toggleProblemVideoPlay()"></video>
+                <video id="problem-live-video" src="problem-live.mp4" poster="video_preview.jpg" playsinline preload="auto" onclick="presentation.toggleProblemVideoPlay()"></video>
                 <div class="kiosk-start-overlay hidden" id="problem-start-overlay" onclick="presentation.startProblemVideoWithSound()">
                   <div class="kiosk-play-pulse-btn">
                     <span class="kiosk-play-icon">▶</span>
@@ -2846,6 +2873,7 @@ class PresentationApp {
 
     // Prompter update
     this.updatePrompter(data);
+    this.broadcastState();
   }
 
   updatePrompter(data) {
@@ -2920,6 +2948,7 @@ class PresentationApp {
     vid.currentTime = 0;
     vid.muted = false;
     vid.volume = 1.0;
+    this.startPitchClock();
 
     vid.play().then(() => {
       if (soundBtn) soundBtn.classList.add('active');
@@ -3547,14 +3576,119 @@ class PresentationApp {
     if (!sfx.muted) sfx.click();
   }
 
-  startTimer() {
+  // Clock starts on the first real move (video start or slide change), not on page load
+  startPitchClock() {
+    if (this.pitchStart) return;
+    this.pitchStart = Date.now();
+    this.slideStart = this.pitchStart;
+    this.broadcastState();
+  }
+
+  resetPitchClock() {
+    this.pitchStart = null;
+    this.slideStart = null;
+    this.renderClock();
+    this.broadcastState();
+    this.showToast('⏱️ Pitch timer reset. It starts on your first move.');
+  }
+
+  renderClock() {
     const timerEl = document.getElementById('hud-timer');
-    setInterval(() => {
-      const elapsedSec = Math.floor((Date.now() - this.startTime) / 1000);
-      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
-      const secs = String(elapsedSec % 60).padStart(2, '0');
-      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
-    }, 1000);
+    const box = timerEl && timerEl.closest('.timer-box');
+    const elapsed = this.pitchStart ? (Date.now() - this.pitchStart) / 1000 : 0;
+    if (timerEl) timerEl.textContent = formatClock(elapsed);
+    if (box) {
+      box.classList.toggle('pace-warn', elapsed >= PITCH_BUDGET_SEC * 0.8 && elapsed < PITCH_BUDGET_SEC);
+      box.classList.toggle('pace-over', elapsed >= PITCH_BUDGET_SEC);
+      box.title = `Pitch budget ${formatClock(PITCH_BUDGET_SEC)} · press R to reset`;
+    }
+  }
+
+  startTimer() {
+    this.pitchStart = null;
+    this.slideStart = null;
+    this.renderClock();
+    setInterval(() => this.renderClock(), 500);
+    setInterval(() => this.broadcastState(), 2000);  // heartbeat for the presenter view
+  }
+
+  // ── Stage controls: presenter sync, blackout, shortcut help ──
+  initStageControls() {
+    if ('BroadcastChannel' in window) {
+      this.channel = new BroadcastChannel(DECK_CHANNEL);
+      this.channel.onmessage = ({ data }) => {
+        if (!data) return;
+        if (data.type === 'goto') { this.startPitchClock(); this.goToSlide(data.index); }
+        else if (data.type === 'next') { this.startPitchClock(); this.nextSlide(); }
+        else if (data.type === 'prev') this.prevSlide();
+        else if (data.type === 'reset') this.resetPitchClock();
+        else if (data.type === 'blackout') this.toggleBlackout();
+        else if (data.type === 'hello') this.broadcastState();
+      };
+    }
+
+    const black = document.createElement('div');
+    black.id = 'stage-blackout';
+    black.className = 'stage-blackout';
+    black.innerHTML = '<span>Screen paused · press B to return</span>';
+    black.onclick = () => this.toggleBlackout(false);
+    document.body.appendChild(black);
+
+    const help = document.createElement('div');
+    help.id = 'stage-help';
+    help.className = 'stage-help';
+    help.setAttribute('role', 'dialog');
+    help.setAttribute('aria-label', 'Keyboard shortcuts');
+    const keys = [
+      ['→ / Space / PgDn', 'Next (Space fires the slide action)'],
+      ['← / PgUp', 'Previous'],
+      ['1 – 7, Home / End', 'Jump to slide'],
+      ['S', 'Open presenter view (second window)'],
+      ['P / N', 'Prompter drawer'],
+      ['B or .', 'Black out the screen'],
+      ['R', 'Reset pitch timer'],
+      ['F', 'Fullscreen'],
+      ['C', 'Clap navigation'],
+      ['M', 'Sound effects on/off'],
+      ['? / H', 'This help']
+    ];
+    help.innerHTML = `<div class="stage-help-card"><h2>Stage shortcuts</h2>
+      <dl>${keys.map(([k, d]) => `<dt><kbd>${k}</kbd></dt><dd>${d}</dd>`).join('')}</dl>
+      <p>Pitch budget: <strong>${formatClock(PITCH_BUDGET_SEC)}</strong> · change with <code>?time=4</code> in the URL</p></div>`;
+    help.onclick = () => this.toggleHelp(false);
+    document.body.appendChild(help);
+  }
+
+  broadcastState() {
+    if (!this.channel) return;
+    this.channel.postMessage({
+      type: 'state',
+      index: this.currentSlideIndex,
+      pitchStart: this.pitchStart,
+      slideStart: this.slideStart,
+      blackout: document.body.classList.contains('is-blackout')
+    });
+  }
+
+  toggleBlackout(force) {
+    const on = typeof force === 'boolean' ? force : !document.body.classList.contains('is-blackout');
+    document.body.classList.toggle('is-blackout', on);
+    this.broadcastState();
+  }
+
+  toggleHelp(force) {
+    const el = document.getElementById('stage-help');
+    if (!el) return;
+    const on = typeof force === 'boolean' ? force : !el.classList.contains('open');
+    el.classList.toggle('open', on);
+    if (on) sfx.panelOpen(); else sfx.panelClose();
+  }
+
+  openPresenterView() {
+    const url = `${location.pathname}?presenter${PITCH_BUDGET_SEC !== 300 ? `&time=${PITCH_BUDGET_SEC / 60}` : ''}`;
+    const win = window.open(url, 'offlinepay-presenter', 'width=1180,height=780');
+    if (!win) this.showToast('⚠️ Allow pop-ups to open the presenter view', true);
+    else this.showToast('🎙️ Presenter view opened. Drag it to your laptop screen.');
   }
 
   getSlideScale(slideId) {
@@ -3740,6 +3874,9 @@ class PresentationApp {
       } else if (e.key === 'f' || e.key === 'F') {
         this.toggleFullscreen();
       } else if (e.key === 'Escape') {
+        const help = document.getElementById('stage-help');
+        if (help && help.classList.contains('open')) { this.toggleHelp(false); return; }
+        if (document.body.classList.contains('is-blackout')) { this.toggleBlackout(false); return; }
         if (this.isPrompterOpen) {
           this.closePrompter();
           return;
@@ -3751,6 +3888,22 @@ class PresentationApp {
         this.toggleClapDetection();
       } else if (e.key === 'm' || e.key === 'M') {
         this.toggleMute();
+      } else if (/^[1-9]$/.test(e.key) && Number(e.key) <= this.totalSlides) {
+        this.goToSlide(Number(e.key) - 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        this.goToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        this.goToSlide(this.totalSlides - 1);
+      } else if (e.key === 'b' || e.key === 'B' || e.key === '.') {
+        this.toggleBlackout();
+      } else if (e.key === 's' || e.key === 'S') {
+        this.openPresenterView();
+      } else if (e.key === 'r' || e.key === 'R') {
+        this.resetPitchClock();
+      } else if (e.key === '?' || e.key === '/' || e.key === 'h' || e.key === 'H') {
+        this.toggleHelp();
       } else if (e.key >= '1' && e.key <= '7') {
         const target = parseInt(e.key) - 1;
         if (target < this.totalSlides) this.goToSlide(target);
@@ -3857,6 +4010,33 @@ class PresentationApp {
     }, { passive: true });
   }
 
+  // Keeps the 3D at a smooth frame rate on weak venue laptops: if the average frame takes
+  // longer than ~22ms (below ~45fps) for 2 seconds, lower the render resolution one step.
+  adaptQuality() {
+    const now = performance.now();
+    if (this.qLast) {
+      const dt = now - this.qLast;
+      if (dt < 250) {   // ignore pauses (video slides, hidden tab)
+        this.qSum = (this.qSum || 0) + dt;
+        this.qFrames = (this.qFrames || 0) + 1;
+      }
+    }
+    this.qLast = now;
+    if ((this.qSum || 0) < 2000) return;
+    const avg = this.qSum / this.qFrames;
+    this.qSum = 0;
+    this.qFrames = 0;
+    const ratio = this.renderer.getPixelRatio();
+    if (avg > 22 && ratio > 1) {
+      this.renderer.setPixelRatio(Math.max(1, ratio - 0.25));
+      this.updateResponsiveLayout();
+    } else if (avg > 22 && this.motes && !this.motesDisabled) {
+      this.motesDisabled = true;
+      this.scene.remove(this.motes);
+      this.motes = null;
+    }
+  }
+
   animate() {
     requestAnimationFrame(() => this.animate());
 
@@ -3879,6 +4059,7 @@ class PresentationApp {
     }
 
     const time = Date.now() * 0.001;
+    this.adaptQuality();
 
     if (this.stars) {
       this.stars.rotation.y = time * 0.02;
@@ -4180,6 +4361,146 @@ class PresentationApp {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Presenter View: open with [S]. Notes, next slide and pacing on the laptop,
+// while the deck stays clean on the projector. Synced via BroadcastChannel.
+// ─────────────────────────────────────────────────────────────
+class PresenterView {
+  constructor() {
+    this.state = { index: 0, pitchStart: null, slideStart: null, blackout: false };
+    this.lastSeen = 0;
+    document.title = 'Presenter · OfflinePay';
+    document.body.className = 'presenter-mode';
+    document.body.innerHTML = `
+      <header class="pv-top">
+        <div class="pv-brand"><span class="brand-logo-icon">OP</span> Presenter View</div>
+        <div class="pv-clock-group">
+          <div class="pv-clock"><span class="pv-label">Elapsed</span><span id="pv-elapsed">00:00</span></div>
+          <div class="pv-clock"><span class="pv-label">Remaining</span><span id="pv-remaining">00:00</span></div>
+          <div class="pv-clock"><span class="pv-label">This slide</span><span id="pv-slide-time">00:00</span></div>
+        </div>
+        <div class="pv-link" id="pv-link">Waiting for deck…</div>
+      </header>
+      <div class="pv-pace"><div class="pv-pace-fill" id="pv-pace-fill"></div><div class="pv-pace-marker" id="pv-pace-marker"></div></div>
+      <main class="pv-grid">
+        <section class="pv-main">
+          <div class="pv-kicker" id="pv-kicker"></div>
+          <h1 id="pv-title"></h1>
+          <div class="pv-section-label">Say this</div>
+          <p class="pv-script" id="pv-script"></p>
+          <div class="pv-section-label">Cue</div>
+          <p class="pv-cue" id="pv-cue"></p>
+          <div class="pv-section-label">If they ask how it works</div>
+          <p class="pv-tech" id="pv-tech"></p>
+        </section>
+        <aside class="pv-side">
+          <div class="pv-next">
+            <div class="pv-section-label">Up next</div>
+            <div id="pv-next-title"></div>
+          </div>
+          <div class="pv-section-label">Judge Q&amp;A</div>
+          <div id="pv-qa"></div>
+        </aside>
+      </main>
+      <footer class="pv-bottom">
+        <button data-act="prev">◀ Prev</button>
+        <div class="pv-dots" id="pv-dots"></div>
+        <button data-act="next" class="pv-primary">Next ▶</button>
+        <button data-act="blackout">Blackout (B)</button>
+        <button data-act="reset">Reset timer (R)</button>
+      </footer>`;
+
+    this.channel = 'BroadcastChannel' in window ? new BroadcastChannel(DECK_CHANNEL) : null;
+    if (this.channel) {
+      this.channel.onmessage = ({ data }) => {
+        if (data && data.type === 'state') {
+          this.state = data;
+          this.lastSeen = Date.now();
+          this.render();
+        }
+      };
+      this.channel.postMessage({ type: 'hello' });
+    }
+
+    document.querySelectorAll('.pv-bottom button').forEach(btn => {
+      btn.onclick = () => this.send(btn.dataset.act);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.send('next'); }
+      else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.send('prev'); }
+      else if (/^[1-9]$/.test(e.key) && Number(e.key) <= SLIDES.length) this.send('goto', Number(e.key) - 1);
+      else if (e.key === 'b' || e.key === 'B' || e.key === '.') this.send('blackout');
+      else if (e.key === 'r' || e.key === 'R') this.send('reset');
+    });
+
+    this.render();
+    setInterval(() => this.tick(), 250);
+  }
+
+  send(type, index) {
+    if (!this.channel) return;
+    this.channel.postMessage(type === 'goto' ? { type, index } : { type });
+  }
+
+  render() {
+    const i = this.state.index;
+    const data = SLIDES[i];
+    const next = SLIDES[i + 1];
+    const p = data.prompter || {};
+    document.getElementById('pv-kicker').textContent = `${data.kicker} · target ${formatClock(SLIDE_TARGETS[i])}`;
+    document.getElementById('pv-title').textContent = stripTags(data.title);
+    document.getElementById('pv-script').textContent = p.pitchScript || '';
+    document.getElementById('pv-cue').textContent = p.demoCue || '';
+    document.getElementById('pv-tech').textContent = p.technicalHighlight || '';
+    document.getElementById('pv-next-title').textContent = next ? `${next.kicker}: ${stripTags(next.title)}` : 'End of deck: deliver the ask, then stop talking.';
+    document.getElementById('pv-qa').innerHTML = (p.anticipatedQA || []).map(q =>
+      `<details class="pv-qa-item"><summary>${q.q}</summary><p>${q.a}</p></details>`).join('');
+    document.getElementById('pv-dots').innerHTML = SLIDES.map((_, d) =>
+      `<button class="pv-dot ${d === i ? 'active' : ''}" data-i="${d}" aria-label="Slide ${d + 1}">${d + 1}</button>`).join('');
+    document.querySelectorAll('.pv-dot').forEach(b => { b.onclick = () => this.send('goto', Number(b.dataset.i)); });
+    document.body.classList.toggle('pv-blackout', !!this.state.blackout);
+    this.tick();
+  }
+
+  tick() {
+    const now = Date.now();
+    const { pitchStart, slideStart, index } = this.state;
+    const elapsed = pitchStart ? (now - pitchStart) / 1000 : 0;
+    const onSlide = slideStart ? (now - slideStart) / 1000 : 0;
+    const remaining = PITCH_BUDGET_SEC - elapsed;
+    const target = SLIDE_TARGETS[index];
+    const plannedSoFar = SLIDE_TARGETS.slice(0, index).reduce((a, b) => a + b, 0);
+
+    document.getElementById('pv-elapsed').textContent = formatClock(elapsed);
+    const remEl = document.getElementById('pv-remaining');
+    remEl.textContent = formatClock(remaining);
+    remEl.className = remaining < 0 ? 'over' : remaining < PITCH_BUDGET_SEC * 0.2 ? 'warn' : '';
+    const slideEl = document.getElementById('pv-slide-time');
+    slideEl.textContent = `${formatClock(onSlide)} / ${formatClock(target)}`;
+    slideEl.className = onSlide > target * 1.25 ? 'over' : onSlide > target ? 'warn' : '';
+
+    document.getElementById('pv-pace-fill').style.width = `${Math.min(100, (elapsed / PITCH_BUDGET_SEC) * 100)}%`;
+    document.getElementById('pv-pace-marker').style.left = `${Math.min(100, ((plannedSoFar + target) / PITCH_BUDGET_SEC) * 100)}%`;
+
+    const link = document.getElementById('pv-link');
+    const live = this.lastSeen && now - this.lastSeen < 5000;
+    link.textContent = !live ? 'Waiting for deck… keep the deck window open'
+      : pitchStart ? `● Synced · slide ${index + 1}/${SLIDES.length}` : '● Synced · timer starts on your first move';
+    link.classList.toggle('ok', !!live);
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-  window.presentation = new PresentationApp();
+  if (new URLSearchParams(location.search).has('presenter')) {
+    window.presenterView = new PresenterView();
+  } else {
+    window.presentation = new PresentationApp();
+  }
 });
+
+// Offline-first: cache the deck, videos and fonts so the pitch survives dead venue Wi-Fi
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('Offline cache unavailable:', err));
+  });
+}
