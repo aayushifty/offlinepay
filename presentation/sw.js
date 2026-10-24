@@ -1,12 +1,12 @@
 // OfflinePay pitch deck service worker: the deck keeps working with zero venue Wi-Fi.
 // Keep VERSION in sync with the ?v= query in index.html; a new version drops old caches.
-const VERSION = '20261024_v51';
+const VERSION = '20261024_v52';
 const CORE = `op-core-${VERSION}`;
 const MEDIA = `op-media-${VERSION}`;
 const FONTS = 'op-fonts-v1';
 
 const CORE_ASSETS = ['./', 'presentation.css', 'presentation.js', 'vendor/three.min.js', 'video_preview.jpg'];
-const MEDIA_ASSETS = ['problem-live.mp4', 'solution-demo.mp4'];
+const MEDIA_ASSETS = ['problem-live.mp4'];
 const NETWORK_TIMEOUT_MS = 2500;
 
 self.addEventListener('install', (event) => {
