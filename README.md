@@ -104,6 +104,24 @@ npm run build:web      # build the iPhone/web version into site/
 GitHub Actions runs the tests, builds the APK and publishes the website on every push to `main`.
 Pushing a tag like `v2.1` creates a numbered release.
 
+## Pitch deck deploys (`presentation/`)
+
+The 3D pitch deck is the Vercel project `tridiots/presentation`, live at
+https://presentation-one-azure.vercel.app. Its Root Directory is set to `presentation`.
+
+- **Automatic:** every push to `main` deploys to production.
+- **Manual:** run the CLI from the **repo root**, not from inside `presentation/`
+  (Vercel would look for `presentation/presentation` and fail):
+
+```bash
+cd offlinepay
+npx vercel --prod --yes
+```
+
+Before deploying a change, bump the `?v=` query on `presentation.css` and `presentation.js` in
+`presentation/index.html`. Don't change the Root Directory back to `.`: with git connected,
+the next push would deploy the whole repo and take the site down.
+
 ## Partner API (summary)
 
 | Endpoint | Purpose |
