@@ -13,63 +13,226 @@ class SoundFx {
   constructor() {
     this.muted = false;
     this.ctx = null;
+    this.master = null;
+    this.noiseBuffer = null;
+    this.videoChains = new WeakMap();
   }
+
   init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) this.ctx = new AudioCtx();
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    this.ctx = new AudioCtx({ latencyHint: 'interactive' });
+
+    // SFX bus: master gain -> soft limiter -> speakers. Overlapping tones can never clip.
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.55;
+    const limiter = this.ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 4;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.12;
+    this.master.connect(limiter);
+    limiter.connect(this.ctx.destination);
+
+    // Shared 1s white-noise buffer for whooshes and air textures
+    const len = this.ctx.sampleRate;
+    this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = this.noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  }
+
+  async resume() {
+    this.init();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (_) {}
     }
+    return !!this.ctx && this.ctx.state === 'running';
   }
+
+  ready() {
+    if (this.muted) return false;
+    this.init();
+    if (!this.ctx) return false;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    return true;
+  }
+
+  // One soft bell-like voice: smooth attack, exponential decay, gentle lowpass, stereo placement
+  voice(freq, { type = 'sine', when = 0, attack = 0.006, decay = 0.35, gain = 0.12, pan = 0, cutoff = 6000, glideTo = null } = {}) {
+    const t = this.ctx.currentTime + when;
+    const osc = this.ctx.createOscillator();
+    const amp = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t + decay * 0.8);
+    filter.type = 'lowpass';
+    filter.frequency.value = cutoff;
+    filter.Q.value = 0.5;
+    amp.gain.setValueAtTime(0.0001, t);
+    amp.gain.linearRampToValueAtTime(gain, t + attack);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+    osc.connect(filter);
+    filter.connect(amp);
+    let out = amp;
+    if (this.ctx.createStereoPanner) {
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = pan;
+      amp.connect(panner);
+      out = panner;
+    }
+    out.connect(this.master);
+    osc.start(t);
+    osc.stop(t + attack + decay + 0.05);
+  }
+
+  // Bell = fundamental + quiet octave partial, so chimes sound glassy instead of beepy
+  bell(freq, opts = {}) {
+    this.voice(freq, opts);
+    this.voice(freq * 2, { ...opts, gain: (opts.gain || 0.12) * 0.22, decay: (opts.decay || 0.35) * 0.6 });
+  }
+
+  // Filtered-noise sweep: the "air" of a slide moving past
+  whoosh({ when = 0, duration = 0.32, from = 600, to = 3200, gain = 0.05 } = {}) {
+    const t = this.ctx.currentTime + when;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 1.4;
+    filter.frequency.setValueAtTime(from, t);
+    filter.frequency.exponentialRampToValueAtTime(to, t + duration);
+    const amp = this.ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, t);
+    amp.gain.linearRampToValueAtTime(gain, t + duration * 0.35);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    src.connect(filter);
+    filter.connect(amp);
+    amp.connect(this.master);
+    src.start(t);
+    src.stop(t + duration + 0.02);
+  }
+
+  // Back-compat helper for any legacy callers
   playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.08) {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + duration);
-    } catch (e) {}
+    if (!this.ready()) return;
+    try { this.voice(freq, { type, decay: duration, gain: gainVal }); } catch (e) {}
   }
+
   slideChange() {
-    this.playTone(340, 'sine', 0.1, 0.05);
-    setTimeout(() => this.playTone(520, 'sine', 0.16, 0.06), 60);
-  }
-  verifySuccess() {
-    this.playTone(523.25, 'triangle', 0.1, 0.08);
-    setTimeout(() => this.playTone(659.25, 'triangle', 0.12, 0.09), 80);
-    setTimeout(() => this.playTone(783.99, 'sine', 0.25, 0.1), 160);
-  }
-  dangerAlert() {
-    this.playTone(220, 'sawtooth', 0.22, 0.09);
-    setTimeout(() => this.playTone(185, 'sawtooth', 0.32, 0.1), 160);
-  }
-  beamLaser() {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
+    if (!this.ready()) return;
     try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(850, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(160, this.ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.07, this.ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.3);
+      this.whoosh({ duration: 0.28, from: 500, to: 2600, gain: 0.035 });
+      this.bell(659.25, { when: 0.02, decay: 0.32, gain: 0.07, pan: -0.15 });  // E5
+      this.bell(987.77, { when: 0.09, decay: 0.45, gain: 0.06, pan: 0.15 });   // B5
     } catch (e) {}
   }
+
+  verifySuccess() {
+    if (!this.ready()) return;
+    try {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {   // C major arpeggio
+        this.bell(f, { when: i * 0.07, decay: 0.5 + i * 0.1, gain: 0.08, pan: -0.3 + i * 0.2 });
+      });
+    } catch (e) {}
+  }
+
+  dangerAlert() {
+    if (!this.ready()) return;
+    try {
+      this.voice(330, { type: 'triangle', decay: 0.28, gain: 0.11, cutoff: 1400 });
+      this.voice(247, { type: 'triangle', when: 0.16, decay: 0.4, gain: 0.11, cutoff: 1200 });
+    } catch (e) {}
+  }
+
+  beamLaser() {
+    if (!this.ready()) return;
+    try {
+      this.voice(1400, { type: 'sine', decay: 0.34, gain: 0.07, glideTo: 280 });
+      this.whoosh({ duration: 0.36, from: 4000, to: 700, gain: 0.03 });
+    } catch (e) {}
+  }
+
+  panelOpen() {
+    if (!this.ready()) return;
+    try {
+      this.voice(440, { type: 'sine', decay: 0.18, gain: 0.06, glideTo: 660 });
+      this.whoosh({ duration: 0.2, from: 800, to: 2400, gain: 0.02 });
+    } catch (e) {}
+  }
+
+  panelClose() {
+    if (!this.ready()) return;
+    try {
+      this.voice(660, { type: 'sine', decay: 0.18, gain: 0.05, glideTo: 420 });
+    } catch (e) {}
+  }
+
+  clapConfirm() {
+    if (!this.ready()) return;
+    try {
+      this.voice(1760, { type: 'sine', decay: 0.05, gain: 0.05 });
+      this.bell(783.99, { when: 0.04, decay: 0.3, gain: 0.07 });   // G5
+      this.bell(1174.66, { when: 0.1, decay: 0.42, gain: 0.06 });  // D6
+    } catch (e) {}
+  }
+
   click() {
-    this.playTone(800, 'sine', 0.05, 0.08);
+    if (!this.ready()) return;
+    try { this.voice(1800, { type: 'sine', decay: 0.04, gain: 0.04 }); } catch (e) {}
+  }
+
+  // Voice-clarity chain for interview/voiceover clips:
+  // rumble cut -> mud cut -> presence lift -> air -> gentle compressor -> makeup -> brickwall limiter.
+  // Only attaches when the AudioContext is actually running, because once a <video> is routed
+  // through WebAudio it is silent while the context is suspended.
+  async attachVideo(vid) {
+    if (!vid) return null;
+    const existing = this.videoChains.get(vid);
+    if (existing) return existing;
+    if (!(await this.resume())) return null;
+    try {
+      const ctx = this.ctx;
+      const src = ctx.createMediaElementSource(vid);
+      const highpass = ctx.createBiquadFilter();
+      highpass.type = 'highpass'; highpass.frequency.value = 85; highpass.Q.value = 0.7;
+      const mud = ctx.createBiquadFilter();
+      mud.type = 'peaking'; mud.frequency.value = 280; mud.Q.value = 1.0; mud.gain.value = -3;
+      const presence = ctx.createBiquadFilter();
+      presence.type = 'peaking'; presence.frequency.value = 3000; presence.Q.value = 0.9; presence.gain.value = 3.5;
+      const air = ctx.createBiquadFilter();
+      air.type = 'highshelf'; air.frequency.value = 8000; air.gain.value = 1.5;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -22; comp.knee.value = 10; comp.ratio.value = 3;
+      comp.attack.value = 0.005; comp.release.value = 0.18;
+      const makeup = ctx.createGain();
+      makeup.gain.value = 1.35;
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -1.5; limiter.knee.value = 0; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.08;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.72;
+
+      src.connect(highpass);
+      highpass.connect(mud);
+      mud.connect(presence);
+      presence.connect(air);
+      air.connect(comp);
+      comp.connect(makeup);
+      makeup.connect(limiter);
+      limiter.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      const chain = { analyser, bins: new Uint8Array(analyser.frequencyBinCount) };
+      this.videoChains.set(vid, chain);
+      return chain;
+    } catch (e) {
+      console.warn('Voice chain unavailable, using native playback:', e);
+      return null;
+    }
   }
 }
 
@@ -854,139 +1017,128 @@ function createDisasterHUDTexture() {
 
 // Active Pitch Deck Slides (Strictly 7 Slides for Trinity Sci-Pitch)
 const SLIDES = [
-  // ── Slide 1: The Problem (Live Ground Reality Video) ──────
+  // ── Slide 1: The Problem (real user testimonials) ──────
   {
     id: 'live-problem',
     kicker: 'Slide 1 • The Problem',
     kickerType: 'danger',
-    title: 'When the Network Dies, <span class="highlight-danger">Commerce Stops</span>',
-    subtitle: 'Why standard digital wallets fail for everyday micro-transactions across Nepal',
+    title: 'When the Signal Drops, <span class="highlight-danger">Payments Die</span>',
+    subtitle: 'Real eSewa, Khalti &amp; mobile-banking users, in their own words',
     videoSrc: 'problem-live.mp4',
     bullets: [
-      {
-        icon: '📡',
-        text: 'Physical Signal Dead Zones',
-        glow: 'glow-red'
-      },
-      {
-        icon: '⏳',
-        text: '3-Way Cloud Handshake Timeouts',
-        glow: 'glow-orange'
-      },
-      {
-        icon: '🛑',
-        text: 'Checkout Queue Bottlenecks',
-        glow: 'glow-rose'
-      },
-      {
-        icon: '💵',
-        text: 'Forced Paper Cash Fallbacks',
-        glow: 'glow-amber'
-      }
+      { icon: '📡', text: 'Signal Dead Zones', glow: 'glow-red' },
+      { icon: '⏳', text: 'Endless Payment Timeouts', glow: 'glow-orange' },
+      { icon: '🛑', text: 'Checkout Lines Freeze', glow: 'glow-rose' },
+      { icon: '💵', text: 'Forced Back to Cash', glow: 'glow-amber' }
     ],
     prompter: {
-      pitchScript: `"Good morning respected judges! Have you ever tried paying for tea, groceries, or a bus fare with your phone, only to watch the payment wheel spin endlessly because cellular data died? Before we talk technology, watch this 25-second ground recording from a Kathmandu merchant shop. When cellular signal drops, standard digital wallets hang and fail completely, queues stall, and merchants are forced right back into physical cash. This real-world breakdown is why we built OfflinePay."`,
-      technicalHighlight: `Current digital wallets rely 100% on continuous cloud access. They require an uninterrupted 3-way handshake: Customer -> Central Server -> Merchant. A single network drop anywhere halts the entire business transaction.`,
-      demoCue: `Let the merchant interview play with sound. Point out the real-world frustration of payment timeouts.`,
+      pitchScript: `"Good morning, judges. Raise your hand if a digital payment has ever just… spun. And spun. Don't tell me. Let them tell you. These are real eSewa, Khalti and mobile-banking users. Different apps, same story: the signal drops, the payment dies, and everyone goes back to cash. That's the problem we solved."`,
+      technicalHighlight: `Every wallet today needs a live internet connection for every single payment: customer, server, merchant. Break any link and the payment fails. Different apps, one shared weak point: the network.`,
+      demoCue: `Stop talking and let the testimonials play with sound. Make eye contact with the judges while users speak. Resume only when the clip ends.`,
       anticipatedQA: [
-        { q: 'Where was this video recorded?', a: 'Recorded live at a local provisions & meat shop in Kathmandu, demonstrating everyday digital payment timeouts.' },
-        { q: 'Why hasn\'t 5G or fiber solved this problem?', a: 'Radio waves cannot penetrate deep concrete basements, highway valleys, or metal buses. Cellular dead zones are an unavoidable physical reality.' }
+        { q: 'Who are the people in the video?', a: 'Real users of different payment apps (eSewa, Khalti and bank apps) we interviewed ourselves. Unscripted. We wanted to show the problem isn\'t one app. It\'s every app that depends on signal.' },
+        { q: 'Won\'t 5G and better networks fix this anyway?', a: 'Signal doesn\'t go through concrete basements, steel buses or mountain valleys. Better networks shrink dead zones; they never remove them. And in a crowd at a festival, even full bars get jammed.' },
+        { q: 'How big is this problem really?', a: 'Every failed payment is a sale that falls back to cash or doesn\'t happen at all. Ask anyone in this room: it has happened to you. Our pilot goal is to measure exactly how often, at real shops.' }
       ]
     }
   },
 
-  // ── Slide 2: The Solution (10-Second 3D Architecture Video) ─
+  // ── Slide 2: The Solution (10-second protocol video) ─
   {
     id: 'solution',
     kicker: 'Slide 2 • The Solution',
     kickerType: 'normal',
-    title: 'Secure <span class="highlight-green">Local Handshakes</span>',
-    subtitle: '10-Second Live Protocol Demonstration',
+    title: 'Pay With <span class="highlight-green">Zero Bars</span>',
+    subtitle: 'Phone to phone. No internet at checkout.',
     videoSrc: 'solution-demo.mp4',
     bullets: [
-      { icon: '🤝', text: 'Instant peer-to-peer verification via encrypted offline QR / local connection', glow: 'glow-green' },
-      { icon: '⚡', text: 'Sub-2-second confirmation: merchant receives instant, verifiable proof of payment', glow: 'glow-cyan' },
-      { icon: '🔄', text: 'Automatic background ledger reconciliation once either device gets back online', glow: 'glow-green' }
+      { icon: '🤝', text: 'Scan. Seal. Done.', glow: 'glow-green' },
+      { icon: '⚡', text: 'Instant Proof for the Merchant', glow: 'glow-cyan' },
+      { icon: '🔄', text: 'Auto-Syncs When Back Online', glow: 'glow-green' }
     ],
     prompter: {
-      pitchScript: `"Here is how OfflinePay solves this: The merchant shows an offline dynamic QR code, the customer scans it, and within two seconds, both phones confirm the payment through a secure local handshake. The vendor gets instant proof of payment, zero internet is needed during checkout, and transactions settle automatically with wallets like eSewa and Khalti once reconnected."`,
-      technicalHighlight: `We eliminate the middleman cloud server at checkout. The customer's phone generates an encrypted, hardware-signed payment voucher, which the merchant's phone validates locally on-device in under 50 milliseconds.`,
-      demoCue: `Point to the 10-second 3D demonstration illustrating the dynamic QR exchange, offline vault settlement, and background sync.`,
+      pitchScript: `"So we asked: what if the payment didn't need the internet at all? Watch. The customer scans the merchant's QR. Their phone creates a sealed digital voucher, like a signed cheque. The merchant's phone checks the seal on the spot. Two seconds. Zero bars. When either phone gets signal again, it settles automatically with eSewa or Khalti."`,
+      technicalHighlight: `No server is needed at the moment of payment. The customer's phone signs the voucher with a key locked in its security chip; the merchant's phone verifies that signature locally. Settlement happens later, in the background.`,
+      demoCue: `Let the 10-second video play. Point at the three chips as they happen: Scan → Sealed Voucher → Auto-Sync.`,
       anticipatedQA: [
-        { q: 'Does the merchant need a special machine or POS device?', a: 'No! It runs entirely on existing smartphone cameras and screens. Zero extra hardware or equipment cost for merchants.' },
-        { q: 'What if the merchant stays offline for 3 days?', a: 'All cryptographic receipts are stored securely on the merchant\'s phone and will automatically settle the moment they connect to Wi-Fi or cellular.' }
+        { q: 'Does the merchant need new hardware?', a: 'No. Just the phone they already have. Camera to scan, screen to show the QR. Zero extra cost.' },
+        { q: 'What if the merchant stays offline for days?', a: 'The sealed vouchers stay safely stored on their phone and settle the moment it connects, whether that\'s Wi-Fi tonight or signal next week.' },
+        { q: 'How does the money actually move if nobody is online?', a: 'At checkout, nothing moves yet. It\'s a signed promise, like a cheque. The real transfer happens when a phone reconnects. Our safety rules on the next slide make sure that promise is always good.' }
       ]
     }
   },
 
-  // ── Slide 3: Architecture & Simplified Security ─────────
+  // ── Slide 3: Security, explained simply ─────────
   {
     id: 'architecture',
-    kicker: 'Slide 3 • Architecture & Security',
+    kicker: 'Slide 3 • Security',
     kickerType: 'purple',
-    title: 'Why You Cannot <span class="highlight-cyan">"Fake" or Duplicate</span> Money',
-    subtitle: 'Military-grade device security explained simply',
+    title: 'Money You <span class="highlight-cyan">Can\'t Copy</span>',
+    subtitle: 'Bank-grade security, explained like a checkbook',
     bullets: [
-      { icon: '🔏', text: 'Hardware-backed digital signatures (like an uncopyable digital seal on your phone)', glow: 'glow-cyan' },
-      { icon: '🔢', text: 'Sequential numbered receipts: incremental check counters prevent double-spending', glow: 'glow-purple' },
-      { icon: '🛡️', text: 'Strict daily offline transaction limits: capped at Rs. 2,000 max reserve to eliminate financial exposure', glow: 'glow-cyan' }
+      { icon: '🔏', text: 'A Hardware Seal on Every Payment', glow: 'glow-cyan' },
+      { icon: '🔢', text: 'Serial-Numbered. Never Reusable.', glow: 'glow-purple' },
+      { icon: '🛡️', text: 'Rs. 2,000 Daily Offline Cap', glow: 'glow-cyan' }
     ],
     actionBtn: { text: '🔐 Verify Security Seals [Space]', fn: 'verifyHashChain' },
     prompter: {
-      pitchScript: `"Judges always ask: 'What stops someone from copying a QR code and spending the same money twice?' We prevent this with three simple safeguards: First, an uncopyable digital seal generated by the phone's hardware security chip. Second, every payment has a sequential serial number—just like numbered checks in a checkbook—so duplicates are immediately rejected. And third, we enforce a strict daily offline cap of Rs. 2,000, eliminating large-scale risk."`,
-      technicalHighlight: `Replace heavy mathematical formulas with the analogy of a pre-authorized digital checkbook with serial numbers (#101, #102, #103). Even without internet, the merchant verifies that the digital seal is authentic and the serial number is strictly greater than the last. If someone tries to re-use check #101, it is instantly blocked.`,
-      demoCue: `Point to the 3D floating cryptographic token cards showing the unforgeable security seals and sequential links.`,
+      pitchScript: `"Now you're thinking: can't someone just copy that voucher and spend it twice? Think of a checkbook. Every payment carries a seal that only that phone's security chip can make, and a serial number: cheque 101, 102, 103. Reuse 101, and it's rejected instantly. And offline spending is capped at two thousand rupees a day, so the worst case is always small."`,
+      technicalHighlight: `Three locks: (1) a signing key that never leaves the phone's secure hardware, (2) a counter that only goes up, so every voucher number is used once, (3) a daily offline limit that caps any possible loss.`,
+      demoCue: `Press [Space] to fire "Verify Security Seals". Point at the chained seal tokens on the right as they light up.`,
       anticipatedQA: [
-        { q: 'What happens if a phone is rooted or jailbroken?', a: 'The private signing keys are generated inside the phone\'s hardware Secure Enclave, which the operating system itself cannot read or tamper with.' },
-        { q: 'What if someone tries to spend offline on two phones at once?', a: 'The offline vault balance is bound to a single physical device with a monotonic counter. Any collision is detected on sync, and the user\'s KYC wallet account is frozen.' }
+        { q: 'What if someone hacks or roots their phone?', a: 'The signing key lives inside the phone\'s secure hardware chip, the same one that protects fingerprints and Face ID. Even the phone\'s own operating system can\'t read it out.' },
+        { q: 'What if I spend the same money on two merchants while offline?', a: 'The duplicate serial number is caught the moment either merchant syncs. The account is flagged and frozen, and because wallets are KYC-verified, we know exactly who did it. With a Rs. 2,000 cap, fraud just isn\'t worth it.' },
+        { q: 'What if the customer doesn\'t actually have the money?', a: 'Offline spending comes from a small pre-loaded offline balance, set aside while online. You can\'t spend money you didn\'t reserve.' }
       ]
     }
   },
 
-  // ── Slide 4: Target Users & Real Ecosystem ───────────────
+  // ── Slide 4: Target Users ───────────────
   {
     id: 'target-users',
-    kicker: 'Slide 4 • Target Users & Ecosystem',
+    kicker: 'Slide 4 • Who It\'s For',
     kickerType: 'normal',
-    title: 'Who <span class="highlight-cyan">Needs</span> OfflinePay?',
-    subtitle: 'Bridging the connectivity gap across essential sectors',
+    title: 'Built for Where <span class="highlight-cyan">Signal Fails</span>',
+    subtitle: 'High-frequency, small-ticket payments in low-signal places',
     bullets: [
-      { icon: '☕', text: 'Micro-merchants, tea stalls, campus cafeterias & local bazaars in weak-signal zones', glow: 'glow-green' },
-      { icon: '🚌', text: 'Public transit buses, microbuses & highway routes operating through continuous dead zones', glow: 'glow-cyan' },
-      { icon: '📱', text: 'Major digital wallet companies (eSewa, Khalti) aiming for 100% reliable transaction capture', glow: 'glow-green' }
+      { icon: '☕', text: 'Tea Stalls &amp; Micro-Merchants', glow: 'glow-green' },
+      { icon: '🚌', text: 'Highway Buses &amp; Microbuses', glow: 'glow-cyan' },
+      { icon: '🍱', text: 'Canteen &amp; Campus Rush Lines', glow: 'glow-green' }
     ],
     actionBtn: { text: '📍 Explore Ecosystem [Space]', fn: 'scanUserSegments' },
     prompter: {
-      pitchScript: `"Who needs OfflinePay? Anyone involved in high-frequency everyday micro-transactions. Campus cafeterias during lunch rush, tea stalls under metal awnings, and highway buses where network drops every kilometer. For wallet companies like eSewa and Khalti, OfflinePay captures millions in lost offline transactions that currently fall back to cash."`,
-      technicalHighlight: `OfflinePay is designed as a drop-in software layer. Micro-merchants need zero extra POS hardware—just their existing smartphone screen and camera.`,
-      demoCue: `Point to the 3D local commerce ecosystem showing the tea shop stall and transit bus.`,
+      pitchScript: `"Who needs this most? The tea stall under a tin roof. The bus driver on the highway, where signal disappears every few kilometres. The school canteen at lunch, where three hundred students hit one weak connection at once. Small payments, huge volume, and that's exactly where today's wallets break."`,
+      technicalHighlight: `Same pattern in every segment: many small payments, low or overloaded signal, zero tolerance for waiting. OfflinePay needs nothing but the phones people already carry.`,
+      demoCue: `Press [Space] for "Explore Ecosystem". Point at the tea stall and the bus nodes in the 3D scene.`,
       anticipatedQA: [
-        { q: 'Why is public transit such a strong use case?', a: 'Buses travel through dead zones constantly, and passengers cannot wait 30 seconds for a payment timeout. Sub-2s offline scanning keeps lines moving smoothly.' },
-        { q: 'Is it free for students and small merchants?', a: 'Yes! Small merchants and students pay zero hardware or setup costs.' }
+        { q: 'Why start with buses?', a: 'Buses are dead zones on wheels. Passengers can\'t wait 30 seconds for a timeout while the bus is moving. A two-second offline tap keeps boarding fast.' },
+        { q: 'Do small shops pay to use it?', a: 'No. Everyday merchants and users get it free inside the wallet app they already use. Our customers are the wallets and large fleets.' },
+        { q: 'Why not start in rural villages?', a: 'Cities have the most payment volume and the most surprise dead zones: basements, crowds, buses. We prove it there first, then expand outward.' }
       ]
     }
   },
 
-  // ── Slide 5: Business Model & Go-to-Market ──────────────
+  // ── Slide 5: Business Model ──────────────
   {
     id: 'business',
-    kicker: 'Slide 5 • Business & GTM',
+    kicker: 'Slide 5 • Business Model',
     kickerType: 'normal',
-    title: 'B2B Integration — <span class="highlight-green">An Engine, Not a New Wallet</span>',
-    subtitle: 'Empowering digital wallet giants with network resilience',
+    title: 'An Engine, <span class="highlight-green">Not Another Wallet</span>',
+    subtitle: 'We plug into the apps Nepal already trusts',
     bullets: [
-      { icon: '🧩', text: 'Lightweight SDK/API plug-in for major wallet apps (e.g., eSewa, Khalti)', glow: 'glow-green' },
-      { icon: '💰', text: 'Revenue via micro-fees per offline settlement or annual enterprise SDK licensing', glow: 'glow-cyan' },
-      { icon: '📈', text: 'Massive adoption driver: wallets retain active users and capture lost transit & rural checkouts', glow: 'glow-green' }
+      { icon: '🧩', text: 'Drop-in SDK for eSewa &amp; Khalti', glow: 'glow-green' },
+      { icon: '💰', text: 'Micro-Fee per Offline Settlement', glow: 'glow-cyan' },
+      { icon: '📈', text: 'Wallets Win Back Lost Payments', glow: 'glow-green' }
     ],
     actionBtn: { text: '💰 Inspect Economics [Space]', fn: 'inspectEconomics' },
     prompter: {
-      pitchScript: `"Our business model is focused: we do NOT compete with wallet giants like eSewa or Khalti. Launching a new consumer wallet is expensive and slow. Instead, we sell OfflinePay as a lightweight software engine that existing wallets plug into. Wallets give their users network resilience so they retain active customers, while paying us a tiny fractional fee on settled offline volume."`,
-      technicalHighlight: `OfflinePay is a non-custodial software protocol. We never hold user deposits or operate banking vaults. All custody and regulatory compliance stays with licensed wallet partners and commercial banks, making our deployment frictionless.`,
-      demoCue: `Point to the 3D commerce ecosystem displaying the partner integration hub and micro-fee token stream.`,
+      pitchScript: `"We are not building another wallet. Nepal doesn't need a new app. It needs the apps it already trusts to stop failing. So OfflinePay is an engine: a small piece of software that eSewa, Khalti or any bank app plugs in. Their users never download anything new. The wallet keeps every payment it used to lose, and we earn a tiny fee on each one."`,
+      technicalHighlight: `We never hold anyone's money. Customer funds and regulatory licences stay with the wallet and the bank. We provide the offline technology. That keeps us lightweight and fast to deploy.`,
+      demoCue: `Press [Space] for "Inspect Economics". Point at the integration pipeline flowing into the partner hub.`,
       anticipatedQA: [
-        { q: 'Why won\'t big wallets build it themselves?', a: 'Big wallets focus on merchant acquisition, customer service, and banking integrations. Specialized offline cryptographic engineering is distinct from core operations; licensing our tested SDK is much faster and cheaper.' },
-        { q: 'Is it free for everyday merchants?', a: 'Yes! Small merchants and everyday users pay zero extra fees. Wallets absorb the tiny infrastructure fee because it prevents customer churn.' }
+        { q: 'Why wouldn\'t eSewa just build this themselves?', a: 'They could, but secure offline payments are a hard specialist problem, and their teams are busy running a wallet. Plugging in a tested engine is faster and cheaper than building one from scratch. Banks buy security tech the same way.' },
+        { q: 'Is this even allowed by Nepal Rastra Bank?', a: 'Because we never touch customer money, we work under our partner wallet\'s existing licence. Our path is to pilot together with a licensed partner, inside the central bank\'s rules, before any wider launch.' },
+        { q: 'What if wallets say no?', a: 'Then we go to the next one. Every wallet loses the same failed payments, and the first to fix it gets an edge over the rest.' }
       ]
     }
   },
@@ -994,23 +1146,30 @@ const SLIDES = [
   // ── Slide 6: Market Comparison ───────────────────────────
   {
     id: 'comparison',
-    kicker: 'Slide 6 • Market Comparison',
+    kicker: 'Slide 6 • Why We Win',
     kickerType: 'cyan',
-    title: 'The <span class="highlight-cyan">Competitive Edge</span>',
-    subtitle: 'The reliability of cash meets the intelligence of digital wallets',
-    bullets: [
-      { icon: '💵', text: 'Physical Cash: 100% offline, but zero records, loose change friction, risk of theft or loss', glow: 'glow-cyan' },
-      { icon: '📱', text: 'Traditional Wallets: Great bookkeeping, but completely fails the second cellular signal drops', glow: 'glow-danger' },
-      { icon: '⚡', text: 'OfflinePay: Instant sub-2s checkout, zero-connection reliability, with automated digital bookkeeping', glow: 'glow-green' }
-    ],
+    title: 'Cash Reliability. <span class="highlight-cyan">Digital Brains.</span>',
+    subtitle: 'The only option that works with zero bars and keeps the records',
+    bullets: [],
+    matrix: {
+      columns: ['Physical Cash', 'Cloud Wallets', 'OfflinePay'],
+      rows: [
+        { label: 'Works with zero signal', cells: [['green', '✔ Always'], ['red', '✖ Fails'], ['green', '✔ Always']] },
+        { label: 'Automatic records', cells: [['red', '✖ None'], ['green', '✔ Yes'], ['green', '✔ Yes']] },
+        { label: 'Checkout speed', cells: [['cyan', 'Counting change'], ['red', 'Spins & times out'], ['green', '⚡ ~2 seconds']] },
+        { label: 'Theft &amp; loss risk', cells: [['red', '✖ High'], ['green', '✔ Low'], ['green', '✔ Low, capped']] },
+        { label: 'Extra hardware', cells: [['cyan', 'None'], ['cyan', 'None'], ['green', '✔ None']], highlight: true }
+      ]
+    },
     actionBtn: { text: '🛡️ Display Resilience [Space]', fn: 'displayImpact' },
     prompter: {
-      pitchScript: `"Let's compare the options. Physical cash works everywhere, but gives you zero accounting records, requires exact change, and can be lost or stolen. Traditional digital wallets give you tracking, but die the moment cell service drops. OfflinePay gives you the best of both worlds: the reliability of physical paper cash with the intelligence of modern digital apps."`,
-      technicalHighlight: `We achieve a unique balance: decentralized local execution during the offline transaction, followed by centralized ledger consistency once network connectivity resumes.`,
-      demoCue: `Point to the comparative matrix on the left and the 3D resilience forcefield shield on the right.`,
+      pitchScript: `"Here's the whole market on one screen. Cash works everywhere, but leaves no records and can be lost or stolen. Cloud wallets keep perfect records, until the signal drops. OfflinePay is the only column that's green all the way down: the reliability of cash, with the brains of a digital wallet."`,
+      technicalHighlight: `Offline when it has to be, online when it can be. Payments happen locally and instantly; records sync to the central ledger automatically once connected.`,
+      demoCue: `Run your finger down the OfflinePay column. Pause on "Works with zero signal". Press [Space] for the resilience shield.`,
       anticipatedQA: [
-        { q: 'What about payment cards (credit/debit)?', a: 'POS card swipe machines also require cellular SIM cards or telephone wires to process transactions, so they suffer from the exact same network blackout problem.' },
-        { q: 'How fast is the payment compared to counting cash?', a: 'OfflinePay confirms in under 2 seconds. Searching for change or counting coins typically takes 15 to 30 seconds.' }
+        { q: 'What about card machines?', a: 'Card machines need a SIM or a phone line to approve a payment, so they fail in exactly the same dead zones. And most small shops in Nepal don\'t have one.' },
+        { q: 'Are there competitors doing offline payments?', a: 'Some countries are experimenting with offline digital money, which tells us the idea is real. In Nepal, no major wallet offers it yet. We want to be the engine that brings it here first.' },
+        { q: 'What stops a big company copying you?', a: 'Speed and focus. We\'re building one thing, offline payments, and the first wallet partnership gives us real-world data and trust that a copycat starts without.' }
       ]
     }
   },
@@ -1020,22 +1179,23 @@ const SLIDES = [
     id: 'revenue',
     kicker: 'Slide 7 • Revenue Model',
     kickerType: 'normal',
-    title: 'How OfflinePay <span class="highlight-green">Generates Revenue</span>',
-    subtitle: '3 High-margin monetization streams with zero consumer friction',
+    title: 'Three Ways <span class="highlight-green">We Get Paid</span>',
+    subtitle: 'Users pay nothing extra. Partners earn back what they lose.',
     bullets: [
-      { icon: '💸', text: 'Stream 1: Digital Wallet Splits (eSewa & Khalti) — Rs. 0.10–0.25 micro-fee on recovered offline transactions', glow: 'glow-green' },
-      { icon: '🏪', text: 'Stream 2: Merchant Subscriptions — Rs. 200–500/month for high-volume offline vendors (buses, canteens, toll booths)', glow: 'glow-cyan' },
-      { icon: '🏦', text: 'Stream 3: B2B SDK Licensing — Annual software license and maintenance for commercial banking apps', glow: 'glow-green' }
+      { icon: '💸', text: 'Wallet Fee Split · Rs. 0.10–0.25 / Payment', glow: 'glow-green' },
+      { icon: '🏪', text: 'Fleet &amp; Canteen Plans · Rs. 200–500 / Month', glow: 'glow-cyan' },
+      { icon: '🏦', text: 'Bank SDK Licences · Annual', glow: 'glow-green' }
     ],
     actionBtn: { text: '💰 Ignite Revenue Streams [Space]', fn: 'igniteRevenue' },
     prompter: {
-      pitchScript: `"How does OfflinePay turn offline resilience into a scalable business? We operate across three clear revenue streams: First, Digital Wallet Splits with giants like eSewa and Khalti—earning a Rs. 0.10 to 0.25 micro-fee on every recovered transaction that would have otherwise failed. Second, Merchant Subscriptions—Rs. 200 to 500 per month for high-volume offline transit buses, highway toll booths, and busy campus canteens who need automated offline reconciliation. And third, B2B SDK Licensing—annual enterprise licensing and compliance maintenance for commercial banking apps. Everyday consumers pay zero extra, wallet partners unlock revenue they currently lose, and our zero-server-at-checkout architecture delivers 85%+ gross profit margins."`,
-      technicalHighlight: `Because offline cryptography happens locally on the customer's and merchant's hardware, our centralized server costs are near zero during transaction execution. We only process batch-settlement syncs, resulting in exceptional software unit economics.`,
-      demoCue: `Point to the 3D Revenue Engine visual showing the 3 distinct monetization pillars (Wallet Splits, Subscriptions, Bank SDKs) and streaming currency tokens.`,
+      pitchScript: `"How do we make money? Three ways. One: wallets share ten to twenty-five paisa on every offline payment we rescue, money they'd otherwise lose completely. Two: bus fleets and canteens pay a small monthly plan for their dashboard. Three: banks license our engine every year. Users pay nothing. Our ask today: help us land our first pilot partner. Thank you."`,
+      technicalHighlight: `Payments are checked on the phones, not on our servers, so each transaction costs us almost nothing to run. We only process the later sync. That's what makes software margins possible.`,
+      demoCue: `Press [Space] to "Ignite Revenue Streams". Deliver the ask slowly, then hold eye contact and stop talking.`,
       anticipatedQA: [
-        { q: 'Why would eSewa or Khalti willingly share micro-fees with OfflinePay?', a: 'Because without OfflinePay, an offline timeout yields them exactly zero revenue—and often causes the user to pay in physical paper cash instead. Sharing Rs. 0.10 to 0.25 on a recovered transaction turns a 100% loss into guaranteed revenue and retains active daily users.' },
-        { q: 'Will small mom-and-pop vendors be forced to pay subscriptions?', a: 'No! Basic mom-and-pop stores use the free tier through their wallet app. The Rs. 200–500/month subscription is exclusively for high-volume enterprise fleets like municipal bus companies, highway tolls, and busy canteens needing dedicated batch-settlement portals and priority reconciliation.' },
-        { q: 'What is the gross margin structure?', a: 'Over 85%. Because cryptographic verification runs locally on client hardware (cameras and WebCrypto chips), our backend infrastructure cost per transaction is negligible compared to traditional payment gateways.' }
+        { q: 'Why would wallets share their fee with you?', a: 'Because without us, that failed payment earns them zero, and the customer pays cash instead. Giving us a few paisa on a payment they\'d have lost is pure profit for them.' },
+        { q: 'Will small shops be forced to pay a subscription?', a: 'Never. Small shops use the free tier inside their wallet. Paid plans are only for big operators like bus fleets and canteens that want settlement dashboards.' },
+        { q: 'What are your next steps and what do you need?', a: 'Finish the working prototype, run a pilot with one canteen and one bus route to measure real failure rates, and use that data to sign our first wallet partner. We need mentorship and an introduction to a wallet or bank.' },
+        { q: 'Are your margins realistic?', a: 'Our costs are low because the phones do the security work, not our servers. The exact margin we\'ll prove in the pilot. We\'d rather show you real numbers than promise big ones.' }
       ]
     }
   }
@@ -1088,7 +1248,11 @@ class PresentationApp {
 
     this.initThree();
     this.createStarfield();
+    this.createMotes();
     this.buildSlideScenes();
+    this.sceneEnterTime = performance.now();
+    this.pointer = { x: 0, y: 0, sx: 0, sy: 0 };
+    this.needsVideoClear = false;
     this.bindEvents();
     this.updateResponsiveLayout();
     this.renderSlideUI(0);
@@ -1117,36 +1281,90 @@ class PresentationApp {
     this.scene.environment = envMap;
 
     // ─────────────────────────────────────────────────────────────
-    // High-Contrast Studio Lighting Rig
+    // Sculpted Studio Lighting Rig: strong key, coloured rims, low ambient
+    // so metal and glass pick up crisp specular highlights instead of looking flat.
     // ─────────────────────────────────────────────────────────────
-    // Crisp White Key Light for authentic material colors & bright specular gloss
-    const whiteKey = new THREE.DirectionalLight(0xffffff, 2.8);
-    whiteKey.position.set(4, 5, 5);
+    const sky = new THREE.HemisphereLight(0xbfe9ff, 0x1a1033, 0.85);
+    this.scene.add(sky);
+
+    const whiteKey = new THREE.DirectionalLight(0xffffff, 3.2);
+    whiteKey.position.set(4, 6, 5);
     this.scene.add(whiteKey);
 
-    // Neon Cyan Rim Light
-    const cyanRim = new THREE.DirectionalLight(0x00f0ff, 3.4);
-    cyanRim.position.set(-4, 3, 3);
+    const cyanRim = new THREE.DirectionalLight(0x00f0ff, 2.6);
+    cyanRim.position.set(-5, 3, 2);
     this.scene.add(cyanRim);
 
-    // Neon Emerald Fill Light
-    const emeraldFill = new THREE.DirectionalLight(0x00ff88, 3.2);
+    const emeraldFill = new THREE.DirectionalLight(0x00ff88, 1.6);
     emeraldFill.position.set(2, -4, 4);
     this.scene.add(emeraldFill);
 
-    // Neon Magenta / Violet Back Rim Light
-    const magentaRim = new THREE.DirectionalLight(0xe879f9, 3.6);
-    magentaRim.position.set(-2, 3, -4);
+    const magentaRim = new THREE.DirectionalLight(0xe879f9, 2.8);
+    magentaRim.position.set(-2, 3, -5);
     this.scene.add(magentaRim);
 
-    // 24K Golden Stage Accent Spotlight (Focused directly on 3D Model Center at X = 1.85)
-    const amberPoint = new THREE.PointLight(0xfbbf24, 2.8, 25);
-    amberPoint.position.set(1.85, 0.2, 3.5);
+    // Moving specular "sweep" light: glides across the model so highlights shimmer
+    this.sweepLight = new THREE.PointLight(0xffffff, 2.2, 12, 1.6);
+    this.sweepLight.position.set(1.8, 1.5, 3.2);
+    this.scene.add(this.sweepLight);
+
+    const amberPoint = new THREE.PointLight(0xfbbf24, 2.0, 25);
+    amberPoint.position.set(1.85, -0.6, 3.5);
     this.scene.add(amberPoint);
 
-    // Crisp Ambient Baseline for Deep Shadow Contrast
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     this.scene.add(ambientLight);
+  }
+
+  // Soft round glow sprite so particles render as crisp dots, not squares
+  createGlowSprite() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.6, 'rgba(255,255,255,0.18)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // Light motes drifting upward around the 3D model
+  createMotes() {
+    const count = 160;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const palette = [[0.0, 0.94, 1.0], [0.06, 0.9, 0.55], [1.0, 0.78, 0.25], [0.9, 0.55, 1.0]];
+    this.moteSeeds = [];
+    for (let i = 0; i < count; i++) {
+      const r = 1.2 + Math.random() * 1.6;
+      const a = Math.random() * Math.PI * 2;
+      positions[i * 3] = Math.cos(a) * r;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 4;
+      positions[i * 3 + 2] = Math.sin(a) * r;
+      const c = palette[i % palette.length];
+      colors.set(c, i * 3);
+      this.moteSeeds.push({ speed: 0.12 + Math.random() * 0.25, sway: Math.random() * Math.PI * 2 });
+    }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.07,
+      map: this.glowSprite,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
+    });
+    this.motes = new THREE.Points(geometry, material);
+    this.scene.add(this.motes);
   }
 
   createStarfield() {
@@ -1175,11 +1393,16 @@ class PresentationApp {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
+    this.glowSprite = this.createGlowSprite();
     const material = new THREE.PointsMaterial({
-      size: 0.035,
+      size: 0.09,
+      map: this.glowSprite,
       vertexColors: true,
       transparent: true,
-      opacity: 0.45
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
     });
 
     this.stars = new THREE.Points(geometry, material);
@@ -2298,6 +2521,8 @@ class PresentationApp {
     }
 
     this.currentSlideIndex = index;
+    this.sceneEnterTime = performance.now();
+    this.needsVideoClear = true;
     sfx.slideChange();
 
     const currentSlide = SLIDES[index];
@@ -2362,8 +2587,8 @@ class PresentationApp {
             <p class="slide-subtitle">${data.subtitle}</p>
 
             <div class="problem-bullets-stack">
-              ${data.bullets.map(b => `
-                <div class="problem-bullet-item ${b.glow || 'glow-red'}">
+              ${data.bullets.map((b, bi) => `
+                <div class="problem-bullet-item ${b.glow || 'glow-red'}" style="--i:${bi}">
                   <span class="pbullet-icon-wrapper">${b.icon}</span>
                   <span class="pbullet-text">${b.text}</span>
                 </div>
@@ -2379,7 +2604,7 @@ class PresentationApp {
                 <div class="kiosk-top-overlay">
                   <div class="kiosk-live-badge">
                     <span class="kiosk-pulse-red"></span>
-                    <span>LIVE RECORDING</span>
+                    <span>REAL USERS</span>
                   </div>
                   <div class="kiosk-audio-indicator">
                     <div class="audio-equalizer" id="kiosk-eq">
@@ -2398,8 +2623,8 @@ class PresentationApp {
                   <div class="kiosk-play-pulse-btn">
                     <span class="kiosk-play-icon">▶</span>
                   </div>
-                  <div class="kiosk-start-heading">TAP TO PLAY WITH SOUND</div>
-                  <div class="kiosk-start-sub">Unmutes live merchant interview (100% Volume)</div>
+                  <div class="kiosk-start-heading">TAP TO HEAR THEIR STORIES</div>
+                  <div class="kiosk-start-sub">eSewa, Khalti &amp; mobile-banking users, in their own words</div>
                 </div>
                 <div class="kiosk-progress-bar">
                   <div class="kiosk-progress-fill" id="problem-progress-fill"></div>
@@ -2435,7 +2660,7 @@ class PresentationApp {
         vid.onended = () => {
           if (nextBtn) nextBtn.classList.add('pulse-ready');
           if (progressFill) progressFill.style.width = '100%';
-          this.showToast('✨ Live recording complete! Press [Space] to reveal our Solution');
+          this.showToast('✨ That is the problem. Press [Space] for the fix.');
         };
 
         const playPromise = vid.play();
@@ -2445,6 +2670,7 @@ class PresentationApp {
               if (overlay) overlay.classList.add('hidden');
               if (soundBtn) soundBtn.classList.add('active');
               if (soundState) soundState.textContent = 'Audio: ON 🔊';
+              this.routeVoice(vid, 'kiosk-eq');
             })
             .catch(err => {
               console.warn('Autoplay unmuted blocked by policy; waiting for user gesture at 0:', err);
@@ -2453,7 +2679,7 @@ class PresentationApp {
               if (overlay) overlay.classList.remove('hidden');
               if (soundBtn) soundBtn.classList.remove('active');
               if (soundState) soundState.textContent = 'Click for Sound 🔊';
-              this.showToast('🔊 Tap the phone screen to start video with sound');
+              this.showToast('🔊 Tap the phone to play the testimonials with sound');
             });
         }
       }, 60);
@@ -2468,10 +2694,11 @@ class PresentationApp {
                 <span class="theater-pulse-dot"></span>
                 <span>OFFLINEPAY 3D ARCHITECTURE</span>
               </div>
-              <h2 class="theater-main-title">10-Sec Live Protocol Demonstration</h2>
+              <h2 class="theater-main-title">Pay With Zero Bars. In 10 Seconds.</h2>
             </div>
             <button class="theater-sound-pill active" id="vid-audio-toggle" onclick="presentation.toggleVideoAudio()">
-              🔊 <span id="vid-audio-state">Voiceover: ON (100%)</span>
+              <span class="audio-equalizer" id="theater-eq"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>
+              <span id="vid-audio-state">Voiceover: ON</span>
             </button>
           </div>
 
@@ -2484,11 +2711,11 @@ class PresentationApp {
 
           <div class="theater-bottom-bar">
             <div class="theater-flow-chips">
-              <span class="flow-chip active">1. Dynamic QR Handshake</span>
+              <span class="flow-chip active">1. Scan the QR</span>
               <span class="flow-arrow">➔</span>
-              <span class="flow-chip active">2. Cryptographic Offline Vault</span>
+              <span class="flow-chip active">2. Sealed Offline Voucher</span>
               <span class="flow-arrow">➔</span>
-              <span class="flow-chip active">3. eSewa / Khalti Sync</span>
+              <span class="flow-chip active">3. Auto-Sync to eSewa / Khalti</span>
             </div>
 
             <div class="theater-action-group">
@@ -2529,7 +2756,7 @@ class PresentationApp {
             nextBtn.classList.add('pulse-ready');
           }
           if (progressFill) progressFill.style.width = '100%';
-          this.showToast('✨ Demonstration complete! Press [Space] or click Next Slide');
+          this.showToast('✨ Paid. Offline. Press [Space] to see why it is secure.');
         };
 
         const playPromise = vid.play();
@@ -2537,7 +2764,8 @@ class PresentationApp {
           playPromise
             .then(() => {
               if (soundBtn) soundBtn.classList.add('active');
-              if (soundState) soundState.textContent = 'Voiceover: ON 🔊';
+              if (soundState) soundState.textContent = 'Voiceover: ON';
+              this.routeVoice(vid, 'theater-eq');
             })
             .catch(err => {
               console.warn('Autoplay unmuted restricted by browser policy:', err);
@@ -2545,7 +2773,7 @@ class PresentationApp {
               vid.play().catch(() => {});
               if (soundBtn) soundBtn.classList.remove('active');
               if (soundState) soundState.textContent = 'Click to Unmute 🔊';
-              this.showToast('🔊 Click "Unmute Voiceover" to hear narration');
+              this.showToast('🔊 Click the Voiceover pill to hear the narration');
             });
         }
       }, 60);
@@ -2557,9 +2785,9 @@ class PresentationApp {
           <div class="slide-kicker ${data.kickerType || 'cyan'}">${data.kicker}</div>
           <h1 class="slide-title">${data.title}</h1>
           ${data.subtitle ? `<div class="slide-subtitle">${data.subtitle}</div>` : ''}
-          <div class="bullets-stack">
-            ${data.bullets.map(b => `
-              <div class="bullet-item ${b.glow || ''}">
+          ${data.bullets.length ? `<div class="bullets-stack">` : '<div hidden>'}
+            ${data.bullets.map((b, bi) => `
+              <div class="bullet-item ${b.glow || ''}" style="--i:${bi}">
                 <span class="bullet-icon">${b.icon}</span>
                 <span class="bullet-text">${b.text}</span>
               </div>
@@ -2570,37 +2798,17 @@ class PresentationApp {
             <table class="comparison-table">
               <thead>
                 <tr>
-                  <th>Attribute</th>
-                  <th>Physical Cash</th>
-                  <th>Traditional Wallets</th>
-                  <th>OfflinePay</th>
+                  <th></th>
+                  ${data.matrix.columns.map((c, ci) => `<th class="${ci === data.matrix.columns.length - 1 ? 'col-hero' : ''}">${c}</th>`).join('')}
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><strong>Offline Reliability</strong></td>
-                  <td><span class="comp-badge green">✔ 100% Offline</span></td>
-                  <td><span class="comp-badge red">✖ Fails in 0-Bar Zones</span></td>
-                  <td><span class="comp-badge green">✔ Instant Handshake</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Digital Bookkeeping</strong></td>
-                  <td><span class="comp-badge red">✖ None (Loose Change)</span></td>
-                  <td><span class="comp-badge cyan">✔ Cloud Ledger Only</span></td>
-                  <td><span class="comp-badge green">✔ Automatic Local Ledger</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Checkout Speed</strong></td>
-                  <td><span class="comp-badge cyan">15–30s Counting</span></td>
-                  <td><span class="comp-badge red">10–30s (Spinning Timeout)</span></td>
-                  <td><span class="comp-badge green">⚡ Sub-2 Seconds</span></td>
-                </tr>
-                <tr class="highlight-row">
-                  <td><strong>Merchant Capex</strong></td>
-                  <td><span class="comp-badge cyan">Rs. 0 Hardware</span></td>
-                  <td><span class="comp-badge cyan">Rs. 0 (Needs Data)</span></td>
-                  <td><span class="comp-badge green">✔ Zero Extra Hardware</span></td>
-                </tr>
+                ${data.matrix.rows.map(r => `
+                  <tr class="${r.highlight ? 'highlight-row' : ''}">
+                    <td><strong>${r.label}</strong></td>
+                    ${r.cells.map(([tone, label], ci) => `<td class="${ci === r.cells.length - 1 ? 'col-hero' : ''}"><span class="comp-badge ${tone}">${label}</span></td>`).join('')}
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
           </div>
@@ -2619,9 +2827,9 @@ class PresentationApp {
           <div class="slide-kicker ${data.kickerType || ''}">${data.kicker}</div>
           <h1 class="slide-title">${data.title}</h1>
           ${data.subtitle ? `<div class="slide-subtitle">${data.subtitle}</div>` : ''}
-          <div class="bullets-stack">
-            ${data.bullets.map(b => `
-              <div class="bullet-item ${b.glow || ''}">
+          ${data.bullets.length ? `<div class="bullets-stack">` : '<div hidden>'}
+            ${data.bullets.map((b, bi) => `
+              <div class="bullet-item ${b.glow || ''}" style="--i:${bi}">
                 <span class="bullet-icon">${b.icon}</span>
                 <span class="bullet-text">${b.text}</span>
               </div>
@@ -2672,6 +2880,34 @@ class PresentationApp {
     if (this[fnName]) this[fnName]();
   }
 
+  // Route a playing <video> through the voice-clarity chain and drive its equalizer from real audio
+  routeVoice(vid, eqId) {
+    sfx.attachVideo(vid).then(chain => {
+      if (!chain || !vid.isConnected) return;
+      const eq = document.getElementById(eqId);
+      this.voiceMeter = { chain, vid, bars: eq ? Array.from(eq.querySelectorAll('.eq-bar')) : [] };
+      if (eq) eq.classList.add('live');
+    });
+  }
+
+  updateVoiceMeter() {
+    const m = this.voiceMeter;
+    if (!m) return;
+    if (!m.vid.isConnected) { this.voiceMeter = null; return; }
+    const { analyser, bins } = m.chain;
+    analyser.getByteFrequencyData(bins);
+    // Speech bands: body, vowels, consonants, sibilance
+    const bands = [[1, 3], [3, 7], [7, 15], [15, 31]];
+    const silent = m.vid.paused || m.vid.muted;
+    m.bars.forEach((bar, i) => {
+      const [a, b] = bands[i % 4];
+      let sum = 0;
+      for (let k = a; k < b; k++) sum += bins[k];
+      const level = silent ? 0 : Math.min(1, (sum / ((b - a) * 255)) * 1.25);
+      bar.style.height = `${3 + Math.round(level * 13)}px`;
+    });
+  }
+
   startProblemVideoWithSound() {
     const vid = document.getElementById('problem-live-video');
     const overlay = document.getElementById('problem-start-overlay');
@@ -2689,7 +2925,8 @@ class PresentationApp {
       if (soundBtn) soundBtn.classList.add('active');
       if (soundState) soundState.textContent = 'Audio: ON 🔊';
       if (eq) eq.classList.remove('muted');
-      this.showToast('🎙️ Live Merchant Testimony: 100% Volume (Playing from Start)');
+      this.routeVoice(vid, 'kiosk-eq');
+      this.showToast('🎙️ Real users, real failures, playing from the start');
     }).catch(err => {
       console.warn('Playback error:', err);
       vid.muted = true;
@@ -2712,11 +2949,11 @@ class PresentationApp {
     if (vid.paused) {
       vid.play();
       if (eq && !vid.muted) eq.classList.remove('muted');
-      this.showToast('▶️ Playing Live Ground Recording');
+      this.showToast('▶️ Resumed testimonials');
     } else {
       vid.pause();
       if (eq) eq.classList.add('muted');
-      this.showToast('⏸️ Paused Live Ground Recording');
+      this.showToast('⏸️ Paused testimonials');
     }
   }
 
@@ -2739,12 +2976,13 @@ class PresentationApp {
       if (btn) btn.classList.add('active');
       if (stateSpan) stateSpan.textContent = 'Audio: ON 🔊';
       if (eq) eq.classList.remove('muted');
-      this.showToast('🎙️ Merchant Audio: UNMUTED (100% Volume)');
+      this.routeVoice(vid, 'kiosk-eq');
+      this.showToast('🎙️ Testimonial audio on');
     } else {
       if (btn) btn.classList.remove('active');
       if (stateSpan) stateSpan.textContent = 'Audio: OFF 🔇';
       if (eq) eq.classList.add('muted');
-      this.showToast('🔇 Merchant Audio Muted');
+      this.showToast('🔇 Testimonial audio muted');
     }
   }
 
@@ -2769,6 +3007,7 @@ class PresentationApp {
       if (soundState) soundState.textContent = 'Audio: ON 🔊';
       const eq = document.getElementById('kiosk-eq');
       if (eq) eq.classList.remove('muted');
+      this.routeVoice(vid, 'kiosk-eq');
     }).catch(() => {
       vid.muted = true;
       const eq = document.getElementById('kiosk-eq');
@@ -2777,7 +3016,7 @@ class PresentationApp {
     });
 
     sfx.slideChange();
-    this.showToast('🔄 Replaying Live Merchant Problem Testimony');
+    this.showToast('🔄 Replaying user testimonials');
   }
 
   firePaymentBeam() {
@@ -2796,13 +3035,13 @@ class PresentationApp {
     vid.currentTime = 0;
     vid.muted = false;
     vid.volume = 1.0;
-    vid.play().catch(() => {
+    vid.play().then(() => this.routeVoice(vid, 'theater-eq')).catch(() => {
       vid.muted = true;
       vid.play().catch(() => {});
     });
 
     sfx.beamLaser();
-    this.showToast('⚡ Replaying 10-Second 3D Solution Demo');
+    this.showToast('⚡ Replaying the 10-second demo');
   }
 
   toggleVideoAudio() {
@@ -2814,14 +3053,14 @@ class PresentationApp {
     vid.muted = !vid.muted;
     if (!vid.muted) {
       vid.volume = 1.0;
-      vid.play().catch(() => {});
+      vid.play().then(() => this.routeVoice(vid, 'theater-eq')).catch(() => {});
       if (btn) btn.classList.add('active');
-      if (stateSpan) stateSpan.textContent = 'Voiceover: ON 🔊';
-      this.showToast('🎙️ Solution Voiceover: UNMUTED (100% Volume)');
+      if (stateSpan) stateSpan.textContent = 'Voiceover: ON';
+      this.showToast('🎙️ Voiceover on');
     } else {
       if (btn) btn.classList.remove('active');
       if (stateSpan) stateSpan.textContent = 'Click to Unmute 🔊';
-      this.showToast('🔇 Solution Voiceover: MUTED');
+      this.showToast('🔇 Voiceover muted');
     }
   }
 
@@ -2931,6 +3170,7 @@ class PresentationApp {
     const btn = document.getElementById('prompter-toggle-btn');
     const backdrop = document.getElementById('prompter-backdrop');
     this.isPrompterOpen = (typeof forceState === 'boolean') ? forceState : !this.isPrompterOpen;
+    if (this.isPrompterOpen) sfx.panelOpen(); else sfx.panelClose();
 
     if (drawer) {
       drawer.classList.toggle('open', this.isPrompterOpen);
@@ -3259,8 +3499,8 @@ class PresentationApp {
 
   onClapDetected(level = 0) {
     try {
-      if (typeof sfx !== 'undefined' && sfx.slideChange) {
-        sfx.slideChange();
+      if (typeof sfx !== 'undefined' && sfx.clapConfirm) {
+        sfx.clapConfirm();
       }
     } catch (_) {}
 
@@ -3304,6 +3544,7 @@ class PresentationApp {
     const btn = document.getElementById('sound-toggle-btn');
     btn.classList.toggle('active', !sfx.muted);
     btn.textContent = sfx.muted ? '🔇' : '🔊';
+    if (!sfx.muted) sfx.click();
   }
 
   startTimer() {
@@ -3408,36 +3649,30 @@ class PresentationApp {
         grp.position.set(0, posY, 0);
         grp.scale.set(scaleVal, scaleVal, scaleVal);
       });
-    } else if (w < 1100) {
-      // Compact landscape (1024x768, laptops, netbooks) - Keep medium-sized and prominent
-      const posX = 1.62;
-      this.targetCamera = { x: 0, y: 0.08, z: 5.85 };
-      this.targetLookAt = { x: 0, y: 0, z: 0 };
-
-      this.slideObjects.forEach((grp, idx) => {
-        const slideData = SLIDES[idx];
-        const slideId = slideData ? slideData.id : null;
-        const scaleVal = this.getSlideScale(slideId) * 0.94;
-        const yOff = this.getSlideYOffset(slideId);
-        grp.position.set(posX, yOff, 0);
-        grp.scale.set(scaleVal, scaleVal, scaleVal);
-      });
     } else {
-      // Standard desktop / wide screen:
-      // Maintain exact same layout, camera positioning and 3D scale whether windowed or maximized/fullscreen
-      const posX = 1.74;
-      this.targetCamera = { x: 0, y: 0.08, z: 5.75 };
+      // Landscape (laptop -> 4K): centre the model in the right half of the frustum and
+      // shrink it only when that half is too narrow or short, keeping a true 50/50 split.
+      const camZ = w < 1100 ? 5.85 : 5.75;
+      this.targetCamera = { x: 0, y: 0.08, z: camZ };
       this.targetLookAt = { x: 0, y: 0, z: 0 };
+      const halfH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * camZ;
+      const halfW = halfH * aspect;
+      // Scenes extend right of their origin, so anchor slightly left of the right-half centre
+      const posX = halfW * 0.42;
+      const MODEL_RADIUS = 2.0;
+      const fit = Math.min(1, (halfW * 0.44) / MODEL_RADIUS, (halfH * 0.78) / MODEL_RADIUS);
 
       this.slideObjects.forEach((grp, idx) => {
         const slideData = SLIDES[idx];
         const slideId = slideData ? slideData.id : null;
-        const scaleVal = this.getSlideScale(slideId) * 1.0;
+        const scaleVal = this.getSlideScale(slideId) * fit;
         const yOff = this.getSlideYOffset(slideId);
-        grp.position.set(posX, yOff, 0);
+        grp.position.set(posX, yOff + 0.1, 0);
         grp.scale.set(scaleVal, scaleVal, scaleVal);
       });
     }
+
+    this.slideObjects.forEach(grp => { grp.userData.baseScale = grp.scale.x; });
   }
 
   bindEvents() {
@@ -3533,6 +3768,11 @@ class PresentationApp {
       this.isDragging = false;
     });
 
+    window.addEventListener('pointermove', (e) => {
+      this.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      this.pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+    }, { passive: true });
+
     window.addEventListener('mousemove', (e) => {
       const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('fullscreen-mode'));
       if (isFS) {
@@ -3625,7 +3865,16 @@ class PresentationApp {
 
     // Completely pause 3D WebGL rendering while full-screen videos are playing.
     // This gives 100% of GPU decoding & compositor throughput to the video, eliminating all lag & frame drops!
+    this.updateVoiceMeter();
+
     if (isVideoSlide) {
+      // Render one empty frame so the previous slide's model never lingers behind the video,
+      // then pause WebGL so the GPU is free for smooth video decoding.
+      if (this.needsVideoClear) {
+        this.needsVideoClear = false;
+        if (this.motes) this.motes.visible = false;
+        this.renderer.render(this.scene, this.camera);
+      }
       return;
     }
 
@@ -3633,10 +3882,43 @@ class PresentationApp {
 
     if (this.stars) {
       this.stars.rotation.y = time * 0.02;
+      this.stars.material.opacity = 0.5 + Math.sin(time * 1.3) * 0.08;
     }
 
     const idx = this.currentSlideIndex;
     const grp = this.slideObjects[idx];
+
+    // Spring-in entrance (ease-out-expo) + gentle pointer parallax on the active scene
+    if (grp) {
+      const k = Math.min(1, (performance.now() - this.sceneEnterTime) / 1100);
+      const ease = k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+      const base = grp.userData.baseScale || grp.scale.x;
+      grp.scale.setScalar(base * (0.82 + 0.18 * ease));
+      this.pointer.sx += (this.pointer.x - this.pointer.sx) * 0.05;
+      this.pointer.sy += (this.pointer.y - this.pointer.sy) * 0.05;
+      grp.rotation.y = (1 - ease) * -0.7 + this.pointer.sx * 0.18;
+      grp.rotation.x = this.pointer.sy * 0.08;
+    }
+
+    if (this.motes && grp) {
+      this.motes.visible = true;
+      this.motes.position.copy(grp.position);
+      const pos = this.motes.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const seed = this.moteSeeds[i];
+        let y = pos.getY(i) + seed.speed * 0.012;
+        if (y > 2.2) y = -2.2;
+        pos.setY(i, y);
+        pos.setX(i, pos.getX(i) + Math.sin(time * 0.8 + seed.sway) * 0.0015);
+      }
+      pos.needsUpdate = true;
+      const fadeIn = Math.min(1, (performance.now() - this.sceneEnterTime) / 800);
+      this.motes.material.opacity = 0.75 * fadeIn;
+    }
+
+    if (this.sweepLight && grp) {
+      this.sweepLight.position.set(grp.position.x + Math.sin(time * 0.6) * 2.4, 1.2 + Math.cos(time * 0.45) * 0.8, 3.0);
+    }
 
     // Dynamic 3D Scene Animations (Data-Driven, not index-dependent)
     if (grp && grp.visible && grp.userData) {
