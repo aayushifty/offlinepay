@@ -2417,3 +2417,6 @@ button:focus-visible, .slide-dot:focus-visible { outline: 2px solid var(--accent
   body.presenter-mode { height: 100vh; overflow: hidden; }
   .pv-grid { min-height: 0; }
 }
+
+/* Snap navigation: amber dot = first snap heard, snap again to advance */
+.clap-meter-dot.armed { background: #f59e0b !important; box-shadow: 0 0 12px #f59e0b !important; }
