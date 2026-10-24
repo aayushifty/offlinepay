@@ -119,7 +119,13 @@ npx vercel --prod --yes
 ```
 
 Before deploying a change, bump the `?v=` query on `presentation.css` and `presentation.js` in
-`presentation/index.html`. Don't change the Root Directory back to `.`: with git connected,
+`presentation/index.html`, and set the same value as `VERSION` in `presentation/sw.js`
+(the service worker that keeps the deck working offline; a new version clears old caches).
+
+**On stage:** open the deck once on the venue network so it saves itself for offline use. Press
+`S` for the presenter view (notes, next slide, pacing) on your laptop screen, `B` to black out,
+`R` to reset the timer, `1`–`7` to jump, and `?` for every shortcut. Add `?time=4` to the URL for
+a 4-minute budget (default 5). Don't change the Root Directory back to `.`: with git connected,
 the next push would deploy the whole repo and take the site down.
 
 ## Partner API (summary)
