@@ -56,6 +56,7 @@ class SoundFx {
     this.init();
     if (!this.ctx) return false;
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    this.lastSoundAt = performance.now();
     return true;
   }
 
@@ -223,10 +224,13 @@ class SoundFx {
       air.connect(comp);
       comp.connect(makeup);
       makeup.connect(limiter);
-      limiter.connect(analyser);
+      const monitor = ctx.createAnalyser();
+      monitor.fftSize = 2048;
+      limiter.connect(monitor);
+      monitor.connect(analyser);
       analyser.connect(ctx.destination);
 
-      const chain = { analyser, bins: new Uint8Array(analyser.frequencyBinCount) };
+      const chain = { analyser, bins: new Uint8Array(analyser.frequencyBinCount), monitor, wave: new Float32Array(monitor.fftSize) };
       this.videoChains.set(vid, chain);
       return chain;
     } catch (e) {
@@ -1232,6 +1236,187 @@ function addNeonEdges(mesh, colorHex, linewidth = 2) {
   mesh.add(line);
   return line;
 }
+
+// Snap & clap navigation detector.
+// Fires only on a deliberate DOUBLE snap or clap ("snap-snap"): two sharp, isolated transients
+// 0.15-0.7s apart with similar loudness, after 1s of quiet and followed by 0.6s of quiet. A single noise (cough,
+// pen click, desk knock, a "t" in speech) can never change the slide, and typing (many clicks)
+// is rejected because a third click arrives.
+//
+// Each transient must look like a snap/clap:
+//   - a spike in the 1.8 kHz+ band well above the room's own noise floor
+//   - concentrated in a few milliseconds (speech and noise spread their energy out)
+//   - no voice body in the sub-450 Hz band
+//   - a sharp attack (reaches full level within ~3ms)
+//   - no voice in the 150ms before it, and none in the 150ms after it
+//   - dies back to room level (a spoken "t" runs on into breath, then a vowel)
+// The first transient of a pair must also follow 1s of quiet, so the tail of a burst of
+// typing or tapping cannot pose as a gesture.
+class SnapDetector {
+  constructor(sampleRate) {
+    this.sampleRate = sampleRate;
+    this.hp1 = SnapDetector.biquad('highpass', 1800, 0.707, sampleRate);
+    this.hp2 = SnapDetector.biquad('highpass', 1800, 0.707, sampleRate);
+    this.lp = SnapDetector.biquad('lowpass', 450, 0.707, sampleRate);
+    this.hiFloor = 0.002;
+    this.loFloor = 0.002;
+    this.prevHiRms = 0.002;
+    this.pending = null;            // transient awaiting "did it die away?" confirmation
+    this.confirmMs = 150;
+    this.voiceHist = [];            // recent buffers: was there voice in the low band?
+    this.lastSpike = -Infinity;     // last clicky sound of any kind (confirmed or not)
+    this.first = null;              // first confirmed transient of a possible pair
+    this.pair = null;               // complete pair waiting for the trailing silence
+    this.minGapMs = 150;
+    this.maxGapMs = 700;
+    this.settleMs = 600;            // no clicky sound may follow (rejects typing and tapping)
+    this.lastFire = -Infinity;
+    this.cooldownMs = 1200;
+    this.sensitivity = 1;           // >1 = more sensitive, <1 = stricter
+  }
+
+  static biquad(type, f0, q, fs) {
+    const w = 2 * Math.PI * f0 / fs;
+    const cos = Math.cos(w), alpha = Math.sin(w) / (2 * q);
+    let b0, b1, b2;
+    if (type === 'highpass') { b0 = (1 + cos) / 2; b1 = -(1 + cos); b2 = (1 + cos) / 2; }
+    else { b0 = (1 - cos) / 2; b1 = 1 - cos; b2 = (1 - cos) / 2; }
+    const a0 = 1 + alpha;
+    return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: (-2 * cos) / a0, a2: (1 - alpha) / a0, x1: 0, x2: 0, y1: 0, y2: 0 };
+  }
+
+  static run(f, x) {
+    const y = f.b0 * x + f.b1 * f.x1 + f.b2 * f.x2 - f.a1 * f.y1 - f.a2 * f.y2;
+    f.x2 = f.x1; f.x1 = x; f.y2 = f.y1; f.y1 = y;
+    return y;
+  }
+
+  // Feed one buffer of raw mic samples. `suppressed` = the deck itself is making sound right now.
+  // Returns { fired, armed, transient, level }.
+  process(input, nowMs, suppressed = false) {
+    const n = input.length;
+    const BLOCK = 64;
+    const blocks = Math.floor(n / BLOCK);
+    const blockRms = new Array(blocks).fill(0);
+    let hiPeak = 0, hiSq = 0, loSq = 0;
+
+    for (let i = 0; i < n; i++) {
+      const x = input[i];
+      const hi = SnapDetector.run(this.hp2, SnapDetector.run(this.hp1, x));
+      const lo = SnapDetector.run(this.lp, x);
+      const a = Math.abs(hi);
+      if (a > hiPeak) hiPeak = a;
+      hiSq += hi * hi;
+      loSq += lo * lo;
+      blockRms[Math.floor(i / BLOCK)] += hi * hi;
+    }
+    for (let b = 0; b < blocks; b++) blockRms[b] = Math.sqrt(blockRms[b] / BLOCK);
+    const hiRms = Math.sqrt(hiSq / n);
+    const loRms = Math.sqrt(loSq / n);
+    let maxIdx = 0;
+    for (let b = 1; b < blocks; b++) if (blockRms[b] > blockRms[maxIdx]) maxIdx = b;
+    const maxBlock = blockRms[maxIdx];
+    // Level just before the attack: the quietest of the two blocks preceding the peak
+    // (or the end of the previous buffer when the peak sits at the very start)
+    const preBlocks = blockRms.slice(Math.max(0, maxIdx - 3), Math.max(0, maxIdx - 1));
+    const preLevel = preBlocks.length ? Math.min(...preBlocks) : this.prevHiRms;
+    const bufMs = (n / this.sampleRate) * 1000;
+    let transient = false;
+    let fired = false;
+
+    if (suppressed) {
+      // The deck's own audio is playing: forget anything half-heard
+      this.pending = null;
+      this.first = null;
+      this.pair = null;
+    }
+
+    // 1) Confirm a pending transient: it must die back to room level with no voice following
+    if (this.pending) {
+      const p = this.pending;
+      p.age += bufMs;
+      const tailLimit = p.age <= bufMs * 1.01
+        ? p.maxBlock * 0.5 + this.hiFloor * 2                 // first buffer may hold the ring-out
+        : Math.max(this.hiFloor * 2.5, p.maxBlock * 0.06);    // then back to the room's floor
+      const firstBuf = p.age <= bufMs * 1.01;
+      // A clap's own low "thump" can spill into the first buffer; after that, no voice allowed
+      const loLimit = Math.max(this.loFloor * 3, p.loRms * 1.3, 0.0025, firstBuf ? p.level * 0.6 : 0);
+      if (hiRms > tailLimit || loRms > loLimit) {
+        this.pending = null;
+      } else if (p.age >= this.confirmMs) {
+        this.pending = null;
+        transient = true;
+        this.onTransient(p.time, p.level, p.quietBefore);
+      }
+    }
+
+    // 2) New candidate: sharp, isolated high-band spike well above the room floor
+    const s = this.sensitivity;
+    const minPeak = Math.max(0.0045 / s, (this.hiFloor * 6) / s);
+    const crest = hiPeak / (hiRms + 1e-6);
+    const clicky = hiPeak >= minPeak && crest >= 3;
+    if (!this.pending && !suppressed) {
+      const attack = maxBlock / (Math.min(preLevel, this.prevHiRms * 1.5) + this.hiFloor * 0.1 + 1e-6);
+      const voiceBefore = this.voiceHist.slice(-14).some(Boolean);   // ~150ms
+      // Silent room: accept even a faint snap. Anyone talking in the last second: be strict.
+      const talking = this.voiceHist.some(Boolean);                  // ~1s
+      const attackMin = talking ? 4.5 : 3;
+      const voiceGuard = loRms < Math.max(hiRms * 2.5, this.loFloor * 3) || hiPeak > 0.2;
+      if (clicky && crest >= 3.2 && attack >= attackMin && !voiceBefore && voiceGuard) {
+        this.pending = { time: nowMs, maxBlock, loRms, level: hiPeak, age: 0, quietBefore: nowMs - this.lastSpike >= 1000 };
+      }
+    }
+    if (clicky) this.lastSpike = nowMs;
+    // A transient under confirmation checks its own tail; its thump is not "someone talking"
+    const voiceNow = loRms > Math.max(this.loFloor * 3, 0.001) && !this.pending && !transient;
+    this.voiceHist.push(voiceNow);
+    if (this.voiceHist.length > 94) this.voiceHist.shift();
+
+    // 3) A complete pair fires once the trailing silence has passed with no third transient
+    if (this.pair && clicky && nowMs - this.pair.time > 60) {
+      this.pair = null;                    // something else clicked: not a clean gesture
+      this.first = null;
+    }
+    if (this.pair && !this.pending && nowMs - this.pair.time >= this.settleMs) {
+      if (nowMs - this.lastFire > this.cooldownMs) {
+        this.lastFire = nowMs;
+        fired = true;
+      }
+      this.pair = null;
+      this.first = null;
+    }
+    if (this.first && !this.pair && nowMs - this.first.time > this.maxGapMs + this.confirmMs) {
+      this.first = null;
+    }
+
+    // 4) Track the room's noise floor, never from a spike
+    if (!this.pending) {
+      this.hiFloor = Math.max(0.0002, this.hiFloor * 0.97 + Math.min(hiRms, this.hiFloor * 3) * 0.03);
+      this.loFloor = Math.max(0.0002, this.loFloor * 0.97 + Math.min(loRms, this.loFloor * 3) * 0.03);
+    }
+    this.prevHiRms = hiRms;
+    return { fired, armed: !!this.first && !this.pair, transient, level: hiPeak };
+  }
+
+  onTransient(time, level, quietBefore) {
+    if (this.pair) {                       // third transient: typing or tapping, not a gesture
+      this.pair = null;
+      this.first = null;
+      return;
+    }
+    if (this.first) {
+      const gap = time - this.first.time;
+      const ratio = level / this.first.level;
+      if (gap >= this.minGapMs && gap <= this.maxGapMs && ratio > 0.4 && ratio < 2.5) {
+        this.pair = { time };
+        return;
+      }
+    }
+    // Only a transient that follows a real pause may open a pair
+    this.first = quietBefore ? { time, level } : null;
+  }
+}
+
 
 class PresentationApp {
   constructor() {
@@ -3319,7 +3504,7 @@ class PresentationApp {
     } else {
       const started = await this.startClapDetection();
       if (started) {
-        this.showToast('👏 Clap Nav Active — Listening (Clap to advance!)');
+        this.showToast('👏 Listening: snap or clap twice to advance');
       }
     }
   }
@@ -3364,121 +3549,41 @@ class PresentationApp {
       this.clapStream = stream;
       const source = this.clapAudioCtx.createMediaStreamSource(stream);
 
-      // Pre-amplifier GainNode: 2.0x calibrated gain (prevents speech from inflating into false triggers)
-      const preAmp = this.clapAudioCtx.createGain();
-      preAmp.gain.setValueAtTime(2.0, this.clapAudioCtx.currentTime);
-
-      // Acoustic Bandpass Filter centered at 2,200 Hz (Q = 1.2):
-      // Attenuates human voice fundamentals (85-255Hz) and main vowel formants (300-800Hz) by >30dB,
-      // as well as table thumps (<200Hz) and high-pitch hiss (>6kHz),
-      // while preserving 100% of the palm-clap impact resonance band (1.5kHz - 3.5kHz).
-      const bandPass = this.clapAudioCtx.createBiquadFilter();
-      bandPass.type = 'bandpass';
-      bandPass.frequency.setValueAtTime(2200, this.clapAudioCtx.currentTime);
-      bandPass.Q.setValueAtTime(1.2, this.clapAudioCtx.currentTime);
-
-      // ScriptProcessorNode: 1024 samples (~21ms per buffer slice)
-      // Runs directly on the audio engine stream without frame-skipping or requestAnimationFrame lag.
-      const processor = this.clapAudioCtx.createScriptProcessor(1024, 1, 1);
+      // Raw mic -> detector. 512 samples (~11ms) per callback; all filtering happens in SnapDetector.
+      const processor = this.clapAudioCtx.createScriptProcessor(512, 1, 1);
       this.clapProcessor = processor;
 
-      // CRITICAL FOR iOS SAFARI / WEBKIT:
-      // Connect to destination via an inaudible gain (0.00001 = -100dB).
-      // Unlike gain=0 (which causes WebKit to prune the graph as silent),
-      // non-zero gain keeps the iOS audio hardware rendering clock continuously active!
+      // CRITICAL FOR iOS SAFARI / WEBKIT: keep the graph alive through an inaudible (non-zero) gain
       const silentGain = this.clapAudioCtx.createGain();
       silentGain.gain.setValueAtTime(0.00001, this.clapAudioCtx.currentTime);
-
-      source.connect(preAmp);
-      preAmp.connect(bandPass);
-      bandPass.connect(processor);
+      source.connect(processor);
       processor.connect(silentGain);
       silentGain.connect(this.clapAudioCtx.destination);
 
+      this.snapDetector = new SnapDetector(this.clapAudioCtx.sampleRate);
       this.isClapNavActive = true;
       this.updateClapUI(true);
-
-      let prevPeak = 0.005;
-      let prevRms = 0.005;
-      let noiseFloor = 0.008;
 
       const meterDot = document.getElementById('clap-meter-dot');
       const fsMeterDot = document.getElementById('fs-clap-meter');
 
       processor.onaudioprocess = (e) => {
         if (!this.isClapNavActive) return;
-
-        const input = e.inputBuffer.getChannelData(0);
-        const len = input.length;
-
-        let peak = 0;
-        let sumSq = 0;
-        let zcr = 0;
-        const qRms = [0, 0, 0, 0];
-
-        // Divide 1024 samples into 4 sub-blocks of 256 samples (~5.3ms each)
-        // Hand claps concentrate almost all acoustic power into a single sharp sub-block,
-        // whereas speech and room sounds sustain energy uniformly across all 4 sub-blocks.
-        for (let q = 0; q < 4; q++) {
-          let qSum = 0;
-          const qStart = q * 256;
-          for (let i = qStart; i < qStart + 256; i++) {
-            const val = Math.abs(input[i]);
-            if (val > peak) peak = val;
-            qSum += val * val;
-            sumSq += val * val;
-            if (i > 0 && ((input[i] >= 0 && input[i - 1] < 0) || (input[i] < 0 && input[i - 1] >= 0))) {
-              zcr++;
-            }
-          }
-          qRms[q] = Math.sqrt(qSum / 256);
-        }
-
-        const rms = Math.sqrt(sumSq / len);
-        const crestFactor = peak / (rms + 0.0001);
-        const deltaPeak = peak - prevPeak;
-
-        const maxQ = Math.max(qRms[0], qRms[1], qRms[2], qRms[3]);
-        const minQ = Math.min(qRms[0], qRms[1], qRms[2], qRms[3]);
-        const temporalConcentration = maxQ / (minQ + 0.001);
-
-        // Real-time audio meter animation (live visual proof of mic listening on iOS & desktop)
-        if (meterDot || fsMeterDot) {
-          const visualScale = Math.min(2.5, Math.max(0.6, 0.6 + rms * 15));
-          const dotTransform = `scale(${visualScale})`;
-          if (meterDot) meterDot.style.transform = dotTransform;
-          if (fsMeterDot) fsMeterDot.style.transform = dotTransform;
-        }
-
-        // Slowly track ambient background room floor (smooth exponential average)
-        noiseFloor = noiseFloor * 0.95 + rms * 0.05;
-
         const now = performance.now();
-        const cooldown = 850; // 850ms debounce prevents double slide skips
-        const cooldownPassed = (now - this.lastClapTimestamp) > cooldown;
+        const result = this.snapDetector.process(e.inputBuffer.getChannelData(0), now, this.isDeckMakingSound(now));
 
-        // TRUE CLAP SPECIFIC VERIFICATION:
-        // 1. Peak >= 0.22: Rejects speech whispers, breathing, laptop typing, mouse clicks
-        // 2. Delta Peak >= 0.12: Sharp step rise from baseline; speech ramps up gradually
-        // 3. Crest Factor >= 3.2: Sharp impulse spike vs continuous voiced vowel waveforms
-        // 4. Temporal Concentration >= 3.0: Impulse confined to <6ms vs speech sustained across 21ms
-        // 5. Zero Crossing Rate >= 50: Wideband palm impact vs low table thumps, chair thuds, or mic rubs
-        const isClap = (
-          cooldownPassed &&
-          peak >= 0.22 &&
-          deltaPeak >= 0.12 &&
-          crestFactor >= 3.2 &&
-          temporalConcentration >= 3.0 &&
-          zcr >= 50
-        );
+        // Live meter: grows with sharp sounds, turns amber after the first snap of a pair
+        const scale = Math.min(2.5, 0.6 + result.level * 20);
+        [meterDot, fsMeterDot].forEach(dot => {
+          if (!dot) return;
+          dot.style.transform = `scale(${scale})`;
+          dot.classList.toggle('armed', result.armed);
+        });
 
-        if (isClap) {
+        if (result.fired) {
           this.lastClapTimestamp = now;
-          this.onClapDetected(peak);
+          this.onClapDetected(result.level);
         }
-
-        prevPeak = peak;
-        prevRms = rms;
       };
 
       return true;
@@ -3490,6 +3595,22 @@ class PresentationApp {
       this.showToast('⚠️ Microphone permission required for Clap Navigation', true);
       return false;
     }
+  }
+
+  // True while the deck itself is making sound the mic could hear: a sound effect in the last
+  // 700ms, or a video whose output is audible (with a 250ms tail for room echo).
+  isDeckMakingSound(now) {
+    if (sfx.lastSoundAt && now - sfx.lastSoundAt < 700) return true;
+    const vid = document.getElementById('problem-live-video') || document.getElementById('solution-demo-video');
+    if (vid && !vid.paused && !vid.muted && !vid.ended) {
+      const chain = sfx.videoChains && sfx.videoChains.get(vid);
+      if (!chain) return true;   // native playback: we cannot hear it, so assume it is loud
+      chain.monitor.getFloatTimeDomainData(chain.wave);
+      let sum = 0;
+      for (let i = 0; i < chain.wave.length; i++) sum += chain.wave[i] * chain.wave[i];
+      if (Math.sqrt(sum / chain.wave.length) > 0.01) this.outputHotUntil = now + 250;
+    }
+    return now < (this.outputHotUntil || 0);
   }
 
   stopClapDetection() {
@@ -3533,8 +3654,7 @@ class PresentationApp {
       }
     } catch (_) {}
 
-    const pct = Math.round(level * 100);
-    this.showToast(`👏 Clap Verified! (${pct}%) ➔ Next Slide`);
+    this.showToast(`👏 Double snap heard ➔ next slide`);
 
     try {
       const clapBtn = document.getElementById('clap-toggle-btn');
@@ -3648,7 +3768,7 @@ class PresentationApp {
       ['B or .', 'Black out the screen'],
       ['R', 'Reset pitch timer'],
       ['F', 'Fullscreen'],
-      ['C', 'Clap navigation'],
+      ['C', 'Snap/clap navigation (snap twice)'],
       ['M', 'Sound effects on/off'],
       ['? / H', 'This help']
     ];

@@ -124,7 +124,10 @@ Before deploying a change, bump the `?v=` query on `presentation.css` and `prese
 
 **On stage:** open the deck once on the venue network so it saves itself for offline use. Press
 `S` for the presenter view (notes, next slide, pacing) on your laptop screen, `B` to black out,
-`R` to reset the timer, `1`–`7` to jump, and `?` for every shortcut. Add `?time=4` to the URL for
+`R` to reset the timer, `1`–`7` to jump, and `?` for every shortcut. `C` turns on snap navigation:
+snap or clap **twice** (about a third of a second apart) to advance. The mic dot turns amber after the
+first snap. Speech, coughs and single clicks are ignored, and so is the deck's own sound, so a snap
+during a playing video won't count; wait for a pause. Add `?time=4` to the URL for
 a 4-minute budget (default 5). Don't change the Root Directory back to `.`: with git connected,
 the next push would deploy the whole repo and take the site down.
 
