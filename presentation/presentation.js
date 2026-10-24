@@ -1047,24 +1047,28 @@ const SLIDES = [
     }
   },
 
-  // ── Slide 2: The Solution (10-second protocol video) ─
+  // ── Slide 2: The Solution (live demo + interactive backup stage) ─
   {
     id: 'solution',
-    kicker: 'Slide 2 • The Solution',
+    kicker: 'Slide 2 • Live Demo',
     kickerType: 'normal',
     title: 'Pay With <span class="highlight-green">Zero Bars</span>',
-    subtitle: 'Phone to phone. No internet at checkout.',
-    videoSrc: 'solution-demo.mp4',
-    bullets: [
-      { icon: '🤝', text: 'Scan. Seal. Done.', glow: 'glow-green' },
-      { icon: '⚡', text: 'Instant Proof for the Merchant', glow: 'glow-cyan' },
-      { icon: '🔄', text: 'Auto-Syncs When Back Online', glow: 'glow-green' }
+    subtitle: 'Both phones offline. Watch the money move anyway.',
+    demoSteps: [
+      'Merchant shows a QR',
+      'Customer scans &amp; confirms Rs. 150',
+      'Phone seals voucher #102',
+      'Merchant verifies it offline',
+      'Signal returns: auto-sync'
     ],
+    bullets: [],
+    actionBtn: { text: '▶ Next Step [Space]', fn: 'demoNextStep' },
     prompter: {
-      pitchScript: `"So we asked: what if the payment didn't need the internet at all? Watch. The customer scans the merchant's QR. Their phone creates a sealed digital voucher, like a signed cheque. The merchant's phone checks the seal on the spot. Two seconds. Zero bars. When either phone gets signal again, it settles automatically with eSewa or Khalti."`,
-      technicalHighlight: `No server is needed at the moment of payment. The customer's phone signs the voucher with a key locked in its security chip; the merchant's phone verifies that signature locally. Settlement happens later, in the background.`,
-      demoCue: `Let the 10-second video play. Point at the three chips as they happen: Scan → Sealed Voucher → Auto-Sync.`,
+      pitchScript: `"Enough talk. Let me show you. Both of these phones are in airplane mode, no internet at all. The merchant shows a QR. I scan it and confirm one hundred fifty rupees. My phone seals a voucher, like signing a cheque, and passes it across. The merchant checks the seal right there: paid, in about two seconds. And the moment signal comes back, it settles with the wallet on its own."`,
+      technicalHighlight: `No server at the moment of payment. The customer's phone signs the voucher with a key locked in its security chip; the merchant's phone verifies that signature locally. Settlement happens later, in the background.`,
+      demoCue: `Turn on airplane mode on both phones BEFORE this slide and show the judges. Demo on the real phones (press "On real phones" to dim the screen). If anything misbehaves, switch back and press Space to step through the on-screen demo instead: 5 steps, then Space moves to Slide 3.`,
       anticipatedQA: [
+        { q: 'Is this a real working app or a mock-up?', a: 'The phones run our working prototype. The on-screen version shows exactly the same five steps, so you can follow along from the back of the room.' },
         { q: 'Does the merchant need new hardware?', a: 'No. Just the phone they already have. Camera to scan, screen to show the QR. Zero extra cost.' },
         { q: 'What if the merchant stays offline for days?', a: 'The sealed vouchers stay safely stored on their phone and settle the moment it connects, whether that\'s Wi-Fi tonight or signal next week.' },
         { q: 'How does the money actually move if nobody is online?', a: 'At checkout, nothing moves yet. It\'s a signed promise, like a cheque. The real transfer happens when a phone reconnects. Our safety rules on the next slide make sure that promise is always good.' }
@@ -2723,12 +2727,7 @@ class PresentationApp {
       existingProblemVid.currentTime = 0;
       existingProblemVid.muted = true;
     }
-    const existingVid = document.getElementById('solution-demo-video');
-    if (existingVid) {
-      existingVid.pause();
-      existingVid.currentTime = 0;
-      existingVid.muted = true;
-    }
+    clearTimeout(this.demoTimer);
 
     this.currentSlideIndex = index;
     this.startPitchClock();
@@ -2738,7 +2737,7 @@ class PresentationApp {
     sfx.slideChange();
 
     const currentSlide = SLIDES[index];
-    const isVideoSlide = (currentSlide.id === 'live-problem' || currentSlide.id === 'solution');
+    const isVideoSlide = (currentSlide.id === 'live-problem' || currentSlide.id === 'solution');   // HTML stages, no 3D
 
     this.slideObjects.forEach((grp, i) => {
       grp.visible = (!isVideoSlide && i === index);
@@ -2897,98 +2896,116 @@ class PresentationApp {
       }, 60);
 
     } else if (data.id === 'solution') {
-      // Slide 2: Full-Screen Independent Theater Mode for 10-Second 3D Architecture Video
+      // Slide 2: Live demo stage. Presenter demos on real phones; the stage is the visual backup.
+      const qr = this.buildDemoQR();
       viewport.innerHTML = `
-        <div class="theater-fullscreen-container">
-          <div class="theater-topbar">
-            <div class="theater-top-title-group">
-              <div class="theater-badge">
-                <span class="theater-pulse-dot"></span>
-                <span>OFFLINEPAY 3D ARCHITECTURE</span>
+        <div class="problem-split-container demo-split">
+          <div class="problem-left-col">
+            <div class="slide-kicker ${data.kickerType || ''}">
+              <span class="live-dot-pulse demo-live-dot"></span> ${data.kicker}
+            </div>
+            <h1 class="slide-title">${data.title}</h1>
+            <p class="slide-subtitle">${data.subtitle}</p>
+            <ol class="demo-steps" id="demo-steps">
+              ${data.demoSteps.map((t, i) => `
+                <li class="demo-step" data-step="${i + 1}" style="--i:${i}" onclick="presentation.demoSetStep(${i + 1})">
+                  <span class="demo-step-num">${i + 1}</span>
+                  <span class="demo-step-text">${t}</span>
+                </li>`).join('')}
+            </ol>
+            <div class="demo-controls">
+              <button class="demo-btn primary" id="demo-next-btn" onclick="presentation.demoNextStep()">▶ <span id="demo-next-label">Start demo</span> <kbd class="kbd-badge">Space</kbd></button>
+              <button class="demo-btn" onclick="presentation.demoReset()" title="Back to the start">↺ Reset</button>
+              <button class="demo-btn" id="demo-real-btn" onclick="presentation.toggleDemoRealMode()" title="Dim the stage while you demo on real phones">📱 On real phones</button>
+            </div>
+          </div>
+
+          <div class="problem-right-col">
+            <div class="demo-stage" id="demo-stage" data-step="0">
+              <div class="demo-phone demo-customer">
+                <div class="demo-status"><span class="demo-net">✈ No internet</span><span>9:41</span></div>
+                <div class="demo-app-head">Customer wallet</div>
+                <div class="demo-screen">
+                  <div class="demo-view" data-steps="0">
+                    <div class="demo-label">Offline balance</div>
+                    <div class="demo-amount">Rs. 2,000</div>
+                    <div class="demo-note">Works with zero bars</div>
+                  </div>
+                  <div class="demo-view" data-steps="1">
+                    <div class="demo-viewfinder"><span></span><span></span><span></span><span></span><div class="demo-scanline"></div></div>
+                    <div class="demo-note">Point camera at the QR</div>
+                  </div>
+                  <div class="demo-view" data-steps="2">
+                    <div class="demo-label">Pay to</div>
+                    <div class="demo-payee">Shyam Tea Stall</div>
+                    <div class="demo-amount">Rs. 150</div>
+                    <div class="demo-confirm">Confirm ✓</div>
+                  </div>
+                  <div class="demo-view" data-steps="3 4">
+                    <div class="demo-seal">🔏</div>
+                    <div class="demo-label">Sealed voucher</div>
+                    <div class="demo-payee">#102 · Rs. 150</div>
+                    <div class="demo-note">Balance now Rs. 1,850</div>
+                  </div>
+                  <div class="demo-view" data-steps="5">
+                    <div class="demo-big-check">✓</div>
+                    <div class="demo-payee">Synced to wallet</div>
+                    <div class="demo-note">Voucher #102 settled</div>
+                  </div>
+                </div>
               </div>
-              <h2 class="theater-main-title">Pay With Zero Bars. In 10 Seconds.</h2>
-            </div>
-            <button class="theater-sound-pill active" id="vid-audio-toggle" onclick="presentation.toggleVideoAudio()">
-              <span class="audio-equalizer" id="theater-eq"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>
-              <span id="vid-audio-state">Voiceover: ON</span>
-            </button>
-          </div>
 
-          <div class="theater-screen-frame">
-            <video id="solution-demo-video" src="solution-demo.mp4" playsinline preload="auto"></video>
-            <div class="theater-progress-track">
-              <div class="theater-progress-fill" id="vid-progress-fill"></div>
-            </div>
-          </div>
+              <div class="demo-link">
+                <div class="demo-token" id="demo-token">🔏 #102</div>
+                <div class="demo-link-line"></div>
+                <div class="demo-link-label" id="demo-link-label">No internet</div>
+              </div>
 
-          <div class="theater-bottom-bar">
-            <div class="theater-flow-chips">
-              <span class="flow-chip active">1. Scan the QR</span>
-              <span class="flow-arrow">➔</span>
-              <span class="flow-chip active">2. Sealed Offline Voucher</span>
-              <span class="flow-arrow">➔</span>
-              <span class="flow-chip active">3. Auto-Sync to eSewa / Khalti</span>
-            </div>
+              <div class="demo-phone demo-merchant">
+                <div class="demo-status"><span class="demo-net">✈ No internet</span><span>9:41</span></div>
+                <div class="demo-app-head">Shyam Tea Stall</div>
+                <div class="demo-screen">
+                  <div class="demo-view" data-steps="0">
+                    <div class="demo-label">Ready to receive</div>
+                    <div class="demo-amount">Rs. 150</div>
+                    <div class="demo-note">Tea + samosa</div>
+                  </div>
+                  <div class="demo-view" data-steps="1 2">
+                    <div class="demo-qr">${qr}</div>
+                    <div class="demo-note">Scan to pay Rs. 150</div>
+                  </div>
+                  <div class="demo-view" data-steps="3">
+                    <div class="demo-spinner"></div>
+                    <div class="demo-label">Checking seal…</div>
+                    <div class="demo-note">On this phone, no server</div>
+                  </div>
+                  <div class="demo-view" data-steps="4">
+                    <div class="demo-big-check">✓</div>
+                    <div class="demo-payee">Rs. 150 received</div>
+                    <div class="demo-note" id="demo-verify-time">Verified offline</div>
+                    <div class="demo-checks">Seal valid · #102 is new</div>
+                  </div>
+                  <div class="demo-view" data-steps="5">
+                    <div class="demo-big-check">✓</div>
+                    <div class="demo-payee">Settled to bank</div>
+                    <div class="demo-note">eSewa / Khalti ledger updated</div>
+                  </div>
+                </div>
+              </div>
 
-            <div class="theater-action-group">
-              <button class="theater-btn replay-btn" onclick="presentation.replayTheaterVideo()" title="Replay 10-second video">
-                🔄 Replay
-              </button>
-              <button class="theater-btn next-slide-btn" id="theater-next-btn" onclick="presentation.nextSlide()" title="Proceed to Slide 3 [Space or ➔]">
-                <span>Next Slide</span> <span class="theater-arrow">➔</span> <kbd class="kbd-badge">Space</kbd>
-              </button>
+              <div class="demo-real-overlay">
+                <div class="demo-real-badge"><span class="live-dot-pulse demo-live-dot"></span> LIVE ON REAL PHONES</div>
+                <div class="demo-real-check">✈ Both phones in airplane mode</div>
+                <div class="demo-real-hint">Press 📱 again to bring the on-screen demo back</div>
+              </div>
             </div>
+            <div class="demo-caption" id="demo-caption">Press Space to start. Both phones stay offline the whole time.</div>
           </div>
         </div>
       `;
-
-      // Autoplay unmuted with safety fallback
-      setTimeout(() => {
-        const vid = document.getElementById('solution-demo-video');
-        const progressFill = document.getElementById('vid-progress-fill');
-        const nextBtn = document.getElementById('theater-next-btn');
-        const soundState = document.getElementById('vid-audio-state');
-        const soundBtn = document.getElementById('vid-audio-toggle');
-
-        if (!vid) return;
-
-        vid.currentTime = 0;
-        vid.muted = false;
-        vid.volume = 1.0;
-
-        vid.ontimeupdate = () => {
-          if (progressFill && vid.duration) {
-            const pct = (vid.currentTime / vid.duration) * 100;
-            progressFill.style.width = `${pct}%`;
-          }
-        };
-
-        vid.onended = () => {
-          if (nextBtn) {
-            nextBtn.classList.add('pulse-ready');
-          }
-          if (progressFill) progressFill.style.width = '100%';
-          this.showToast('✨ Paid. Offline. Press [Space] to see why it is secure.');
-        };
-
-        const playPromise = vid.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              if (soundBtn) soundBtn.classList.add('active');
-              if (soundState) soundState.textContent = 'Voiceover: ON';
-              this.routeVoice(vid, 'theater-eq');
-            })
-            .catch(err => {
-              console.warn('Autoplay unmuted restricted by browser policy:', err);
-              vid.muted = true;
-              vid.play().catch(() => {});
-              if (soundBtn) soundBtn.classList.remove('active');
-              if (soundState) soundState.textContent = 'Click to Unmute 🔊';
-              this.showToast('🔊 Click the Voiceover pill to hear the narration');
-            });
-        }
-      }, 60);
+      this.demoStep = 0;
+      this.demoRealMode = false;
+      this.demoSetStep(0, true);
 
     } else if (data.id === 'comparison') {
       // Slide 6: Market Comparison Table
@@ -3233,49 +3250,111 @@ class PresentationApp {
     this.showToast('🔄 Replaying user testimonials');
   }
 
-  firePaymentBeam() {
-    this.replayTheaterVideo();
+  // Decorative QR (finder squares + seeded modules): looks right from the back of the room
+  buildDemoQR() {
+    const N = 21;
+    let seed = 102;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const finder = (x, y) => (x < 7 && y < 7) || (x >= N - 7 && y < 7) || (x < 7 && y >= N - 7);
+    const inFinderDark = (x, y) => {
+      const fx = x >= N - 7 ? x - (N - 7) : x;
+      const fy = y >= N - 7 ? y - (N - 7) : y;
+      return fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx >= 2 && fx <= 4 && fy >= 2 && fy <= 4);
+    };
+    let rects = '';
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const dark = finder(x, y) ? inFinderDark(x, y) : rnd() < 0.48;
+        if (dark) rects += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+      }
+    }
+    return `<svg viewBox="-1 -1 ${N + 2} ${N + 2}" shape-rendering="crispEdges" aria-label="Payment QR code"><rect x="-1" y="-1" width="${N + 2}" height="${N + 2}" fill="#fff"/><g fill="#0b1220">${rects}</g></svg>`;
   }
 
-  replayTheaterVideo() {
-    const vid = document.getElementById('solution-demo-video');
-    const nextBtn = document.getElementById('theater-next-btn');
-    const progressFill = document.getElementById('vid-progress-fill');
-    if (!vid) return;
+  demoSetStep(step, silent = false) {
+    const stage = document.getElementById('demo-stage');
+    if (!stage) return;
+    const TOTAL = SLIDES[this.currentSlideIndex].demoSteps.length;
+    this.demoStep = Math.max(0, Math.min(TOTAL, step));
+    clearTimeout(this.demoTimer);
+    stage.dataset.step = String(this.demoStep);
+    stage.classList.remove('verified');
 
-    if (nextBtn) nextBtn.classList.remove('pulse-ready');
-    if (progressFill) progressFill.style.width = '0%';
-
-    vid.currentTime = 0;
-    vid.muted = false;
-    vid.volume = 1.0;
-    vid.play().then(() => this.routeVoice(vid, 'theater-eq')).catch(() => {
-      vid.muted = true;
-      vid.play().catch(() => {});
+    stage.querySelectorAll('.demo-view').forEach(v => {
+      v.classList.toggle('on', v.dataset.steps.split(' ').includes(String(this.demoStep)));
+    });
+    document.querySelectorAll('#demo-steps .demo-step').forEach(li => {
+      const n = Number(li.dataset.step);
+      li.classList.toggle('done', n < this.demoStep);
+      li.classList.toggle('current', n === this.demoStep);
     });
 
-    sfx.beamLaser();
-    this.showToast('⚡ Replaying the 10-second demo');
+    const captions = [
+      'Press Space to start. Both phones stay offline the whole time.',
+      'The merchant shows a payment QR. No internet on either phone.',
+      'The customer scans it and confirms Rs. 150.',
+      'The customer\'s phone seals a voucher and passes it across, phone to phone.',
+      'The merchant\'s phone checks the seal itself. Paid.',
+      'Signal is back: both phones settle with the wallet automatically.'
+    ];
+    const caption = document.getElementById('demo-caption');
+    if (caption) caption.textContent = captions[this.demoStep];
+    const linkLabel = document.getElementById('demo-link-label');
+    if (linkLabel) linkLabel.textContent = this.demoStep === 5 ? 'Back online: syncing' : 'No internet';
+    stage.querySelectorAll('.demo-net').forEach(el => {
+      el.textContent = this.demoStep === 5 ? '📶 Online' : '✈ No internet';
+      el.classList.toggle('online', this.demoStep === 5);
+    });
+    const label = document.getElementById('demo-next-label');
+    if (label) label.textContent = this.demoStep === 0 ? 'Start demo' : this.demoStep >= TOTAL ? 'Next slide' : 'Next step';
+
+    // Step 4: a real stopwatch on the merchant phone, then the tick
+    if (this.demoStep === 4) {
+      const timeEl = document.getElementById('demo-verify-time');
+      const t0 = performance.now();
+      const verifyMs = 1300;
+      const tick = () => {
+        const ms = performance.now() - t0;
+        if (ms < verifyMs) {
+          if (timeEl) timeEl.textContent = `Checking… ${(ms / 1000).toFixed(1)}s`;
+          this.demoTimer = setTimeout(tick, 50);
+        } else {
+          if (timeEl) timeEl.textContent = `Verified offline in ${(verifyMs / 1000).toFixed(1)}s`;
+          stage.classList.add('verified');
+          if (!silent) sfx.verifySuccess();
+        }
+      };
+      tick();
+    }
+
+    if (silent) return;
+    if (this.demoStep === 3) sfx.beamLaser();
+    else if (this.demoStep === 5) sfx.slideChange();
+    else if (this.demoStep !== 4) sfx.click();
+    this.broadcastState();
   }
 
-  toggleVideoAudio() {
-    const vid = document.getElementById('solution-demo-video');
-    const btn = document.getElementById('vid-audio-toggle');
-    const stateSpan = document.getElementById('vid-audio-state');
-    if (!vid) return;
+  demoNextStep() {
+    const TOTAL = SLIDES[this.currentSlideIndex].demoSteps ? SLIDES[this.currentSlideIndex].demoSteps.length : 0;
+    if (!TOTAL) return;
+    if (this.demoRealMode) this.toggleDemoRealMode(false);
+    if (this.demoStep >= TOTAL) { this.nextSlide(); return; }
+    this.demoSetStep(this.demoStep + 1);
+  }
 
-    vid.muted = !vid.muted;
-    if (!vid.muted) {
-      vid.volume = 1.0;
-      vid.play().then(() => this.routeVoice(vid, 'theater-eq')).catch(() => {});
-      if (btn) btn.classList.add('active');
-      if (stateSpan) stateSpan.textContent = 'Voiceover: ON';
-      this.showToast('🎙️ Voiceover on');
-    } else {
-      if (btn) btn.classList.remove('active');
-      if (stateSpan) stateSpan.textContent = 'Click to Unmute 🔊';
-      this.showToast('🔇 Voiceover muted');
-    }
+  demoReset() {
+    this.demoSetStep(0);
+    this.showToast('↺ Demo reset');
+  }
+
+  toggleDemoRealMode(force) {
+    const stage = document.getElementById('demo-stage');
+    if (!stage) return;
+    this.demoRealMode = typeof force === 'boolean' ? force : !this.demoRealMode;
+    stage.classList.toggle('real-mode', this.demoRealMode);
+    const btn = document.getElementById('demo-real-btn');
+    if (btn) btn.classList.toggle('active', this.demoRealMode);
+    sfx.click();
   }
 
   verifyHashChain() {
@@ -3601,7 +3680,7 @@ class PresentationApp {
   // 700ms, or a video whose output is audible (with a 250ms tail for room echo).
   isDeckMakingSound(now) {
     if (sfx.lastSoundAt && now - sfx.lastSoundAt < 700) return true;
-    const vid = document.getElementById('problem-live-video') || document.getElementById('solution-demo-video');
+    const vid = document.getElementById('problem-live-video');
     if (vid && !vid.paused && !vid.muted && !vid.ended) {
       const chain = sfx.videoChains && sfx.videoChains.get(vid);
       if (!chain) return true;   // native playback: we cannot hear it, so assume it is loud
@@ -3741,6 +3820,11 @@ class PresentationApp {
         if (data.type === 'goto') { this.startPitchClock(); this.goToSlide(data.index); }
         else if (data.type === 'next') { this.startPitchClock(); this.nextSlide(); }
         else if (data.type === 'prev') this.prevSlide();
+        else if (data.type === 'action') {
+          this.startPitchClock();
+          const cur = SLIDES[this.currentSlideIndex];
+          if (cur && cur.actionBtn) this.triggerSlideAction(cur.actionBtn.fn); else this.nextSlide();
+        }
         else if (data.type === 'reset') this.resetPitchClock();
         else if (data.type === 'blackout') this.toggleBlackout();
         else if (data.type === 'hello') this.broadcastState();
@@ -3786,6 +3870,7 @@ class PresentationApp {
       index: this.currentSlideIndex,
       pitchStart: this.pitchStart,
       slideStart: this.slideStart,
+      demoStep: this.demoStep || 0,
       blackout: document.body.classList.contains('is-blackout')
     });
   }
@@ -4534,9 +4619,16 @@ class PresenterView {
     if (this.channel) {
       this.channel.onmessage = ({ data }) => {
         if (data && data.type === 'state') {
+          const prev = this.state;
           this.state = data;
           this.lastSeen = Date.now();
-          this.render();
+          // Heartbeats must not rebuild the panels (that would snap open Q&A answers shut)
+          if (prev.index !== data.index || prev.demoStep !== data.demoStep || prev.blackout !== data.blackout || !this.rendered) {
+            this.rendered = true;
+            this.render();
+          } else {
+            this.tick();
+          }
         }
       };
       this.channel.postMessage({ type: 'hello' });
@@ -4546,7 +4638,8 @@ class PresenterView {
       btn.onclick = () => this.send(btn.dataset.act);
     });
     window.addEventListener('keydown', (e) => {
-      if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.send('next'); }
+      if (e.key === ' ') { e.preventDefault(); this.send('action'); }
+      else if (['ArrowRight', 'PageDown'].includes(e.key)) { e.preventDefault(); this.send('next'); }
       else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.send('prev'); }
       else if (/^[1-9]$/.test(e.key) && Number(e.key) <= SLIDES.length) this.send('goto', Number(e.key) - 1);
       else if (e.key === 'b' || e.key === 'B' || e.key === '.') this.send('blackout');
@@ -4567,7 +4660,8 @@ class PresenterView {
     const data = SLIDES[i];
     const next = SLIDES[i + 1];
     const p = data.prompter || {};
-    document.getElementById('pv-kicker').textContent = `${data.kicker} · target ${formatClock(SLIDE_TARGETS[i])}`;
+    const demo = data.demoSteps ? ` · demo step ${this.state.demoStep || 0}/${data.demoSteps.length} (Space)` : '';
+    document.getElementById('pv-kicker').textContent = `${data.kicker} · target ${formatClock(SLIDE_TARGETS[i])}${demo}`;
     document.getElementById('pv-title').textContent = stripTags(data.title);
     document.getElementById('pv-script').textContent = p.pitchScript || '';
     document.getElementById('pv-cue').textContent = p.demoCue || '';
