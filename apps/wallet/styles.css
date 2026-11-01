@@ -24,13 +24,14 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   background: var(--bg); color: var(--ink);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
-#app { max-width: 480px; margin: 0 auto; min-height: 100vh; }
+#app { max-width: 480px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
 #app.tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 #app.sub { padding-bottom: 24px; }
 button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
@@ -216,7 +217,8 @@ details.demo summary::-webkit-details-marker { display: none; }
 .link-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; color: var(--brand); font-weight: 700; margin-top: 4px; }
 .field { display: block; margin-bottom: 14px; }
 .field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
-.field input, textarea { width: 100%; padding: 13px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: #fbfcfb; outline: none; }
+/* 16px or larger: iOS Safari zooms the page when a smaller input takes focus. */
+.field input, textarea { width: 100%; padding: 13px 14px; font-size: 16px; border-radius: 12px; border: 1.5px solid var(--line); background: #fbfcfb; outline: none; }
 .field input:focus, textarea:focus { border-color: var(--brand); background: #fff; }
 .field input.amount { font-size: 26px; font-weight: 800; }
 .presets { display: flex; gap: 8px; margin: -4px 0 4px; flex-wrap: wrap; }
@@ -264,7 +266,7 @@ details.demo summary::-webkit-details-marker { display: none; }
 .foot { text-align: center; color: var(--muted); font-size: 12px; margin: 18px 16px 8px; }
 
 /* ---------- auth & setup ---------- */
-.auth, .setup { min-height: 100vh; }
+.auth, .setup { min-height: 100vh; min-height: 100dvh; }
 .auth-hero, .setup-hero {
   background: linear-gradient(160deg, var(--brand), var(--brand-dark)); color: #fff; text-align: center;
   padding: calc(env(safe-area-inset-top) + 36px) 16px 80px; position: relative;
@@ -293,7 +295,7 @@ details.advanced { margin-top: 14px; border-top: 1px solid var(--line); padding-
 details.advanced summary { color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
 
 /* ---------- onboarding ---------- */
-.onb { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: calc(env(safe-area-inset-top) + 40px) 28px 32px; background: var(--card); position: relative; }
+.onb { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: calc(env(safe-area-inset-top) + 40px) 28px 32px; background: var(--card); position: relative; }
 .onb-skip { position: absolute; right: 16px; top: calc(env(safe-area-inset-top) + 14px); color: var(--muted); font-weight: 700; padding: 8px; }
 .onb-ic { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
 .onb-step { margin-top: 26px; color: var(--brand); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
@@ -319,6 +321,6 @@ details.advanced summary { color: var(--muted); font-size: 13px; font-weight: 60
 .scan-hint { color: #d4dad6; text-align: center; margin: 0; max-width: 340px; }
 .scan-paste { width: 100%; max-width: 460px; color: #d4dad6; }
 .scan-paste summary { text-align: center; cursor: pointer; font-size: 13px; }
-.scan-paste textarea { margin-top: 10px; min-height: 90px; font-size: 12px; font-family: ui-monospace, monospace; background: #171b19; color: #fff; border-color: #2c322f; }
+.scan-paste textarea { margin-top: 10px; min-height: 90px; font-size: 16px; font-family: ui-monospace, monospace; background: #171b19; color: #fff; border-color: #2c322f; }
 
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #1d2320; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); box-shadow: var(--shadow); }
