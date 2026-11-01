@@ -14,8 +14,8 @@ This repo is a working demo with two mock wallets, **PayA** (green) and **PayB**
 
 | Phone | How |
 |---|---|
-| **Android** | Download `OfflinePay-Wallet.apk` from [Releases](https://github.com/aayushbhatta230-ux/offlinepay/releases) and install it. If you had version 1.x, uninstall it first. |
-| **iPhone** | Open **https://aayushbhatta230-ux.github.io/offlinepay/** in Safari → **Share → Add to Home Screen** → open it from the icon. |
+| **Android** | Download `OfflinePay-Wallet.apk` from [Releases](https://github.com/aayushifty/offlinepay/releases) and install it. If you had version 1.x, uninstall it first. |
+| **iPhone** | Open **https://aayushifty.github.io/offlinepay/** in Safari → **Share → Add to Home Screen** → open it from the icon. |
 
 No laptop or server needed. Pick PayA or PayB, create an account (it starts with NPR 5,000 of demo
 money) and go. Android and iPhone can pay each other.
@@ -64,7 +64,7 @@ Reset with **Profile → Erase all data on this phone**.
 Run one shared backend with a live dashboard for a projector:
 
 ```bash
-git clone https://github.com/aayushbhatta230-ux/offlinepay.git
+git clone https://github.com/aayushifty/offlinepay.git
 cd offlinepay
 npm install
 npm start
