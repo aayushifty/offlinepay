@@ -128,7 +128,8 @@ Before deploying a change, bump the `?v=` query on `presentation.css` and `prese
 snap or clap **twice** (about a third of a second apart) to advance. The mic dot turns amber after the
 first snap. Speech, coughs and single clicks are ignored, and so is the deck's own sound, so a snap
 during a playing video won't count; wait for a pause. Add `?time=4` to the URL for
-a 4-minute budget (default 5). Don't change the Root Directory back to `.`: with git connected,
+a 4-minute budget (default 5). The first video waits for a press (Space or a tap on it), and Slide 4
+tours its three scenes in about 10 seconds; drag the 3D view to look around. Don't change the Root Directory back to `.`: with git connected,
 the next push would deploy the whole repo and take the site down.
 
 ## Partner API (summary)
