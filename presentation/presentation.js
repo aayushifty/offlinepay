@@ -786,37 +786,7 @@ function create3DMapPin(colorHex) {
   return pinGroup;
 }
 
-// Slide 4: Bus Amber LED Route Marquee Texture
-function createBusMarqueeTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#020617';
-  ctx.fillRect(0, 0, 512, 128);
-
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(6, 6, 500, 116);
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 32px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('BUS 104 • RATNAPARK ➔ LAGANKHEL', 256, 52);
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 26px sans-serif';
-  ctx.fillText('⚡ TAP TO PAY OFFLINE • ZERO NET', 256, 96);
-  ctx.textAlign = 'start';
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.anisotropy = 8;
-  tex.needsUpdate = true;
-  return tex;
-}
-
-// Slide 4: Bazaar Stall Neon Overhead Signboard
+// Slide 4: General Store Neon Overhead Signboard
 function createBazaarBannerTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -836,47 +806,11 @@ function createBazaarBannerTexture() {
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 36px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('☕ HIMALAYAN TEA KIOSK', 256, 52);
+  ctx.fillText('GENERAL STORE', 256, 52);
 
   ctx.fillStyle = '#4ade80';
   ctx.font = 'bold 26px monospace';
-  ctx.fillText('OFFLINEPAY ACCEPTED HERE', 256, 94);
-  ctx.textAlign = 'start';
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.anisotropy = 8;
-  tex.needsUpdate = true;
-  return tex;
-}
-
-// Slide 4: Floating Air-Gap Commerce Grid HUD
-function createEcosystemHUDTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 160;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath();
-  ctx.roundRect(8, 8, 496, 144, 20);
-  ctx.fill();
-
-  ctx.strokeStyle = '#00f0ff';
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 28px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('📍 AIR-GAP COMMERCE GRID', 256, 48);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 34px sans-serif';
-  ctx.fillText('P2P Optical Mesh Active', 256, 92);
-
-  ctx.fillStyle = '#10b981';
-  ctx.font = '22px monospace';
-  ctx.fillText('● 100% Signal-Independent', 256, 130);
+  ctx.fillText('PAY WITH OFFLINEPAY', 256, 94);
   ctx.textAlign = 'start';
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -1107,21 +1041,21 @@ const SLIDES = [
     kicker: 'Slide 4 • Who It\'s For',
     kickerType: 'normal',
     title: 'Built for Where <span class="highlight-cyan">Signal Fails</span>',
-    subtitle: 'High-frequency, small-ticket payments in low-signal places',
+    subtitle: 'Three places where payments can\'t wait for signal',
     bullets: [
-      { icon: '☕', text: 'Tea Stalls &amp; Micro-Merchants', glow: 'glow-green' },
-      { icon: '🚌', text: 'Highway Buses &amp; Microbuses', glow: 'glow-cyan' },
-      { icon: '🍱', text: 'Canteen &amp; Campus Rush Lines', glow: 'glow-green' }
+      { icon: '🛵', text: 'Ride-Sharing Platforms', glow: 'glow-cyan' },
+      { icon: '🏪', text: 'General Stores', glow: 'glow-green' },
+      { icon: '📡', text: 'Low-Tower Places', glow: 'glow-cyan' }
     ],
-    actionBtn: { text: '📍 Explore Ecosystem [Space]', fn: 'scanUserSegments' },
+    actionBtn: { text: '📍 Next Place [Space]', fn: 'scanUserSegments' },
     prompter: {
-      pitchScript: `"Who needs this most? The tea stall under a tin roof. The bus driver on the highway, where signal disappears every few kilometres. The school canteen at lunch, where three hundred students hit one weak connection at once. Small payments, huge volume, and that's exactly where today's wallets break."`,
-      technicalHighlight: `Same pattern in every segment: many small payments, low or overloaded signal, zero tolerance for waiting. OfflinePay needs nothing but the phones people already carry.`,
-      demoCue: `Press [Space] for "Explore Ecosystem". Point at the tea stall and the bus nodes in the 3D scene.`,
+      pitchScript: `"Who needs this most? Ride-sharing platforms, where the fare is due the moment the trip ends, wherever that is. General stores, where one slow payment holds up the whole queue. And low-tower places, hills and small towns where the nearest tower is far away. Same need every time: pay now, signal or no signal."`,
+      technicalHighlight: `Same pattern in all three: many small payments, weak or overloaded signal, no patience for waiting. OfflinePay needs nothing but the phones people already carry.`,
+      demoCue: `The scene moves through all three places by itself in about 10 seconds. Press [Space] to go to the next place, click a bullet to jump to it, drag the 3D scene to rotate it. After the last place, [Space] moves to the next slide.`,
       anticipatedQA: [
-        { q: 'Why start with buses?', a: 'Buses are dead zones on wheels. Passengers can\'t wait 30 seconds for a timeout while the bus is moving. A two-second offline tap keeps boarding fast.' },
-        { q: 'Do small shops pay to use it?', a: 'No. Everyday merchants and users get it free inside the wallet app they already use. Our customers are the wallets and large fleets.' },
-        { q: 'Why not start in rural villages?', a: 'Cities have the most payment volume and the most surprise dead zones: basements, crowds, buses. We prove it there first, then expand outward.' }
+        { q: 'Why ride-sharing platforms?', a: 'Trips end wherever the rider is going, including basements and dead zones. Driver and rider settle with a two-second offline tap, and one platform brings many drivers at once.' },
+        { q: 'Do general stores pay to use it?', a: 'No. Everyday merchants and users get it free inside the wallet app they already use. Our customers are the wallets and large fleets.' },
+        { q: 'Where do you start: cities or low-tower places?', a: 'Cities have the most payment volume and plenty of surprise dead zones, so we prove it there first. Low-tower places are where it matters most, and the same app works there too.' }
       ]
     }
   },
@@ -1454,6 +1388,8 @@ class PresentationApp {
 
     // Mouse / Touch Orbit
     this.isDragging = false;
+    this.ecoDragging = false;
+    this.ecoOrbit = { yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0, lastInput: 0 };
     this.prevMouseX = 0;
     this.prevMouseY = 0;
     this.orbitYaw = 0;
@@ -1970,7 +1906,7 @@ class PresentationApp {
     g2.userData = { phoneAFrame, phoneBFrame, waveCore };
 
     // ─────────────────────────────────────────────────────────────
-    // Slide 3: Real Target Ecosystem (Bazaar Shop + City Bus + QR Standee)
+    // Slide 3: Target Places (Ride-Sharing + General Store + Low-Tower Place)
     // ─────────────────────────────────────────────────────────────
     const g3 = gTargetUsers;
     const ecoGroup = new THREE.Group();
@@ -1996,168 +1932,207 @@ class PresentationApp {
     floorRing2.position.y = -0.96;
     ecoGroup.add(floorRing2);
 
-    // Dark Road Strip with Center Line
-    const roadGeom = new THREE.BoxGeometry(4.6, 0.04, 1.25);
-    const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
-    const road = new THREE.Mesh(roadGeom, roadMat);
-    road.position.set(0, -0.96, 0.6);
-    ecoGroup.add(road);
-    addNeonEdges(road, 0x38bdf8, 1);
+    // Builders shared by the three scenes
+    const stdMat = (color, emissive, emissiveIntensity = 0.5, roughness = 0.4) =>
+      new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity, roughness });
+    const addMesh = (parent, geometry, material, x, y, z) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, y, z);
+      parent.add(mesh);
+      return mesh;
+    };
+    const addBox = (parent, w, h, d, x, y, z, material) =>
+      addMesh(parent, new THREE.BoxGeometry(w, h, d), material, x, y, z);
+    const makeEcoScene = () => {
+      const scene = new THREE.Group();
+      scene.position.y = -0.96;
+      scene.scale.setScalar(0.001);
+      scene.visible = false;
+      ecoGroup.add(scene);
+      return scene;
+    };
+    const windowGlowMat = new THREE.MeshBasicMaterial({ color: 0xfde68a });
+    const ecoPhoneMat = stdMat(0x0f172a, 0x0284c7, 0.7);
+    // Coin face points at the viewer and spins around its vertical axis
+    const ecoCoinGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 20);
+    ecoCoinGeo.rotateX(Math.PI / 2);
 
-    // 1. Merchant Shop Stall / Tea Kiosk
-    const shopGroup = new THREE.Group();
-    shopGroup.position.set(-1.15, -0.96, -0.5);
-    ecoGroup.add(shopGroup);
-
-    // Stall Counter Underglow
-    const shopUnderglow = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.03, 0.6), new THREE.MeshBasicMaterial({ color: 0x10b981 }));
-    shopUnderglow.position.y = 0.02;
-    shopGroup.add(shopUnderglow);
-
-    const counter = new THREE.Mesh(
-      new THREE.BoxGeometry(1.25, 0.72, 0.62),
-      new THREE.MeshStandardMaterial({ color: 0x042f2e, emissive: 0x064e3b, emissiveIntensity: 0.45, roughness: 0.3 })
-    );
-    counter.position.y = 0.36;
-    shopGroup.add(counter);
-    addNeonEdges(counter, 0x10b981, 2);
-
-    // Striped Awning Canopy
-    const awning = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.08, 0.95),
-      new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.65, roughness: 0.2 })
-    );
-    awning.position.set(0, 1.08, 0.1);
-    awning.rotation.x = 0.2;
-    shopGroup.add(awning);
-    addNeonEdges(awning, 0xffffff, 2);
-
-    // Neon Bazaar Signboard
-    const shopBanner = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.28, 0.06),
-      new THREE.MeshBasicMaterial({ map: createBazaarBannerTexture() })
-    );
-    shopBanner.position.set(0, 1.35, 0.15);
-    shopGroup.add(shopBanner);
-    addNeonEdges(shopBanner, 0x10b981, 2);
-
-    // Countertop QR Standee
-    const standee = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, 0.4, 0.04),
-      new THREE.MeshBasicMaterial({ map: createQRStandeeTexture() })
-    );
-    standee.position.set(0.3, 0.92, 0.08);
-    standee.rotation.y = -0.2;
-    shopGroup.add(standee);
-    addNeonEdges(standee, 0x10b981, 2);
-
-    // Customer Smartphone scanning QR
-    const buyerPhone = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.48, 0.03),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, emissive: 0x0284c7, emissiveIntensity: 0.7 })
-    );
-    buyerPhone.position.set(0.28, 1.45, 0.32);
-    buyerPhone.rotation.x = 0.45;
-    shopGroup.add(buyerPhone);
-    addNeonEdges(buyerPhone, 0x00f0ff, 2);
-
-    // Scanning Laser Pyramid Beam from Customer Phone to QR Standee
-    const scanBeamGeom = new THREE.ConeGeometry(0.32, 0.55, 4, 1, true);
-    const scanBeamMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.75 });
-    const scanPyramid = new THREE.Mesh(scanBeamGeom, scanBeamMat);
-    scanPyramid.position.set(0.29, 1.18, 0.2);
-    scanPyramid.rotation.x = 0.45;
-    shopGroup.add(scanPyramid);
-
-    // Emerald Map Pin over Merchant Shop
-    const shopPin = create3DMapPin(0x10b981);
-    shopPin.position.set(0, 2.05, 0);
-    shopGroup.add(shopPin);
-
-    // 2. Public Transit City Bus
-    const busGroup = new THREE.Group();
-    busGroup.position.set(1.05, -0.96, 0.6);
-    ecoGroup.add(busGroup);
-
-    // Bus Underglow Light
-    const busUnderglow = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 0.6), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-    busUnderglow.position.y = 0.02;
-    busGroup.add(busUnderglow);
-
-    // Bus Body Chassis (Vibrant Cyan)
-    const busBody = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 0.7, 0.72),
-      new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.65, metalness: 0.4, roughness: 0.2 })
-    );
-    busBody.position.y = 0.52;
-    busGroup.add(busBody);
-    addNeonEdges(busBody, 0x00f0ff, 2);
-
-    // Amber LED Destination Marquee Board on Bus Front
-    const busMarquee = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.2, 0.64),
-      new THREE.MeshBasicMaterial({ map: createBusMarqueeTexture() })
-    );
-    busMarquee.position.set(0.81, 0.72, 0);
-    busMarquee.rotation.y = Math.PI / 2;
-    busGroup.add(busMarquee);
-    addNeonEdges(busMarquee, 0xf59e0b, 2);
-
-    // Dark Window Ribbon Strip
-    const winStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(1.62, 0.26, 0.74),
-      new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.1, metalness: 0.9 })
-    );
-    winStrip.position.y = 0.62;
-    busGroup.add(winStrip);
-
-    // 4 Wheels
-    const wheelGeom = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
-    const busWheels = [];
-    [-0.52, 0.52].forEach(x => {
-      [-0.38, 0.38].forEach(z => {
-        const w = new THREE.Mesh(wheelGeom, wheelMat);
-        w.rotation.x = Math.PI / 2;
-        w.position.set(x, 0.15, z);
-        busGroup.add(w);
-        busWheels.push(w);
-      });
-    });
-
-    // Glowing Headlights
-    const headlight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.55), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    headlight.position.set(0.81, 0.38, 0);
-    busGroup.add(headlight);
-
-    // Cyan Map Pin over City Bus
-    const busPin = create3DMapPin(0x00f0ff);
-    busPin.position.set(0, 1.55, 0);
-    busGroup.add(busPin);
-
-    // Floating Air-Gap Commerce Grid HUD Billboard
-    const ecoHUD = new THREE.Mesh(
-      new THREE.BoxGeometry(1.8, 0.55, 0.06),
-      new THREE.MeshBasicMaterial({ map: createEcosystemHUDTexture() })
-    );
-    ecoHUD.position.set(0, 1.45, -0.6);
-    ecoGroup.add(ecoHUD);
-    addNeonEdges(ecoHUD, 0x00f0ff, 2);
-
-    // 6 Parabolic Jumping Payment Coins
-    const tokenArcCoins = [];
-    for (let c = 0; c < 6; c++) {
-      const tc = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.15, 0.15, 0.05, 20),
-        new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.95 })
-      );
-      tc.rotation.x = Math.PI / 2;
-      tc.userData = { phase: c * (1 / 6) };
-      ecoGroup.add(tc);
-      tokenArcCoins.push(tc);
+    // ── Scene 1: Ride-sharing platforms ──
+    const rideScene = makeEcoScene();
+    const road = addBox(rideScene, 4.3, 0.04, 1.5, 0, 0.02, 0.15, stdMat(0x1e293b, 0x000000, 0, 0.7));
+    addNeonEdges(road, 0x00f0ff, 1);
+    const roadDashMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
+    for (let i = 0; i < 7; i++) {
+      addBox(rideScene, 0.34, 0.012, 0.05, -1.8 + i * 0.6, 0.046, 0.15, roadDashMat);
     }
 
-    g3.userData = { ecoGroup, shopPin, busPin, busWheels, tokenArcCoins, scanPyramid, floorRing1, floorRing2, ecoHUD };
+    const tyreMat = stdMat(0x0f172a, 0x000000, 0, 0.8);
+    const hubMat = stdMat(0x94a3b8, 0x334155, 0.4, 0.3);
+    const rideWheels = [];
+    const addRideWheel = (parent, radius, x, y, z) => {
+      const wheel = new THREE.Group();
+      wheel.position.set(x, y, z);
+      addMesh(wheel, new THREE.TorusGeometry(radius, radius * 0.3, 10, 24), tyreMat, 0, 0, 0);
+      addBox(wheel, radius * 1.7, radius * 0.12, radius * 0.12, 0, 0, 0, hubMat);
+      addBox(wheel, radius * 0.12, radius * 1.7, radius * 0.12, 0, 0, 0, hubMat);
+      parent.add(wheel);
+      rideWheels.push(wheel);
+    };
+
+    // Motorbike taxi with rider and passenger
+    const bikeGroup = new THREE.Group();
+    bikeGroup.position.set(0.75, 0.04, 0.5);
+    bikeGroup.scale.setScalar(1.55);
+    rideScene.add(bikeGroup);
+    const bikeBodyMat = stdMat(0x0e7490, 0x00b8d4, 0.7, 0.3);
+    addRideWheel(bikeGroup, 0.17, 0.38, 0.22, 0);
+    addRideWheel(bikeGroup, 0.17, -0.38, 0.22, 0);
+    addBox(bikeGroup, 0.62, 0.16, 0.14, 0, 0.4, 0, bikeBodyMat);
+    addBox(bikeGroup, 0.3, 0.06, 0.16, -0.12, 0.52, 0, stdMat(0x0f172a, 0x000000, 0, 0.7));
+    addBox(bikeGroup, 0.05, 0.34, 0.05, 0.33, 0.38, 0, hubMat).rotation.z = -0.35;
+    addBox(bikeGroup, 0.04, 0.04, 0.3, 0.27, 0.58, 0, hubMat);
+    addMesh(bikeGroup, new THREE.SphereGeometry(0.05, 12, 12), new THREE.MeshBasicMaterial({ color: 0xfde047 }), 0.36, 0.48, 0);
+    const riderMat = stdMat(0x065f46, 0x10b981, 0.55);
+    const passengerMat = stdMat(0x475569, 0x64748b, 0.35);
+    addMesh(bikeGroup, new THREE.CylinderGeometry(0.09, 0.11, 0.32, 12), riderMat, -0.02, 0.72, 0);
+    addMesh(bikeGroup, new THREE.SphereGeometry(0.1, 16, 16), riderMat, 0.02, 0.95, 0);
+    addMesh(bikeGroup, new THREE.CylinderGeometry(0.08, 0.1, 0.3, 12), passengerMat, -0.26, 0.7, 0);
+    addMesh(bikeGroup, new THREE.SphereGeometry(0.085, 16, 16), passengerMat, -0.27, 0.92, 0);
+    addBox(bikeGroup, 0.14, 0.22, 0.02, -0.2, 0.9, 0.16, ecoPhoneMat);
+
+    // Ride-share car
+    const carGroup = new THREE.Group();
+    carGroup.position.set(-0.95, 0.04, -0.2);
+    rideScene.add(carGroup);
+    const carBodyMat = stdMat(0x065f46, 0x10b981, 0.5, 0.25);
+    addBox(carGroup, 1.1, 0.28, 0.52, 0, 0.3, 0, carBodyMat);
+    addBox(carGroup, 0.6, 0.24, 0.46, -0.05, 0.56, 0, stdMat(0x0f172a, 0x0284c7, 0.45, 0.2));
+    [[-0.34, -0.27], [-0.34, 0.27], [0.34, -0.27], [0.34, 0.27]].forEach(([x, z]) => addRideWheel(carGroup, 0.13, x, 0.14, z));
+
+    // Trip route with pins, coin travels along it when the trip is paid
+    const routeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-1.75, 0.1, -0.95),
+      new THREE.Vector3(0, 1.7, -0.75),
+      new THREE.Vector3(1.75, 0.1, -0.95)
+    ]);
+    addMesh(rideScene, new THREE.TubeGeometry(routeCurve, 48, 0.02, 8, false), new THREE.MeshBasicMaterial({ color: 0x00f0ff }), 0, 0, 0);
+    const ridePins = [
+      { color: 0x10b981, x: -1.75 },
+      { color: 0x00f0ff, x: 1.75 }
+    ].map(({ color, x }) => {
+      const pin = create3DMapPin(color);
+      pin.position.set(x, 0.1, -0.95);
+      pin.userData.baseY = 0.1;
+      rideScene.add(pin);
+      return pin;
+    });
+    const rideCoin = addMesh(rideScene, ecoCoinGeo, stdMat(0xfbbf24, 0xf59e0b, 0.95), 0, 0, 0);
+
+    // City blocks behind the road
+    const buildingMat = stdMat(0x0f172a, 0x1e293b, 0.5, 0.6);
+    [[-1.1, 0.55, -1.45, 0.7, 1.1], [0.3, 0.8, -1.55, 0.6, 1.6], [1.2, 0.45, -1.4, 0.7, 0.9]].forEach(([x, y, z, w, h]) => {
+      const building = addBox(rideScene, w, h, 0.5, x, y, z, buildingMat);
+      addNeonEdges(building, 0x334155, 1);
+      for (let row = 0; row * 0.28 + 0.3 < h; row++) {
+        addBox(building, 0.1, 0.12, 0.01, -w * 0.2, h / 2 - 0.2 - row * 0.28, 0.255, windowGlowMat);
+        addBox(building, 0.1, 0.12, 0.01, w * 0.2, h / 2 - 0.2 - row * 0.28, 0.255, windowGlowMat);
+      }
+    });
+
+    // ── Scene 2: General store ──
+    const storeScene = makeEcoScene();
+    addBox(storeScene, 2.0, 1.5, 0.1, 0, 0.75, -0.55, stdMat(0x0f172a, 0x042f2e, 0.5, 0.6));
+    const shelfMat = stdMat(0x334155, 0x1e293b, 0.4, 0.5);
+    const productMats = [0xf43f5e, 0xfbbf24, 0x38bdf8, 0x34d399, 0xa78bfa, 0xfb923c].map(c => stdMat(c, c, 0.3));
+    const productBoxGeo = new THREE.BoxGeometry(0.16, 0.22, 0.14);
+    const productCanGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.24, 12);
+    [0.42, 0.78, 1.14].forEach((y, row) => {
+      addBox(storeScene, 1.85, 0.04, 0.28, 0, y, -0.38, shelfMat);
+      for (let i = 0; i < 7; i++) {
+        const geo = (i + row) % 2 === 0 ? productBoxGeo : productCanGeo;
+        addMesh(storeScene, geo, productMats[(i * 2 + row) % 6], -0.72 + i * 0.24, y + 0.13, -0.38);
+      }
+    });
+    const counter = addBox(storeScene, 1.7, 0.62, 0.6, 0, 0.31, 0.35, stdMat(0x042f2e, 0x064e3b, 0.45, 0.3));
+    addNeonEdges(counter, 0x10b981, 1);
+    addBox(storeScene, 1.75, 0.03, 0.65, 0, 0.02, 0.35, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+    [-1.0, 1.0].forEach(x => addBox(storeScene, 0.07, 1.6, 0.07, x, 0.8, 0.55, hubMat));
+    const awning = addBox(storeScene, 2.2, 0.07, 1.35, 0, 1.55, 0.1, stdMat(0x10b981, 0x059669, 0.65, 0.2));
+    awning.rotation.x = 0.16;
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xf0fdf4 });
+    [-0.84, -0.42, 0, 0.42, 0.84].forEach(x => addBox(awning, 0.16, 0.074, 1.352, x, 0, 0, stripeMat));
+    addBox(storeScene, 2.0, 0.5, 0.06, 0, 1.9, -0.2, new THREE.MeshBasicMaterial({ map: createBazaarBannerTexture() }));
+    const storePin = create3DMapPin(0x10b981);
+    storePin.position.set(0, 2.2, -0.2);
+    storePin.userData.baseY = 2.2;
+    storeScene.add(storePin);
+    // Shopkeeper behind the counter
+    const keeperMat = stdMat(0x475569, 0x64748b, 0.35);
+    addMesh(storeScene, new THREE.CylinderGeometry(0.12, 0.14, 0.5, 12), keeperMat, -0.4, 0.75, -0.05);
+    addMesh(storeScene, new THREE.SphereGeometry(0.12, 16, 16), keeperMat, -0.4, 1.1, -0.05);
+
+    // Customer's phone scanning the QR standee on the counter
+    const standeePos = new THREE.Vector3(0.45, 0.88, 0.42);
+    const scanPhonePos = new THREE.Vector3(0.98, 0.98, 0.9);
+    const scanDir = scanPhonePos.clone().sub(standeePos).normalize();
+    const standee = addBox(storeScene, 0.36, 0.52, 0.04, standeePos.x, standeePos.y, standeePos.z, new THREE.MeshBasicMaterial({ map: createQRStandeeTexture() }));
+    standee.rotation.y = -0.2;
+    const scanPhone = addBox(storeScene, 0.26, 0.5, 0.03, scanPhonePos.x, scanPhonePos.y, scanPhonePos.z, ecoPhoneMat);
+    scanPhone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), scanDir);
+    const scanPyramid = addMesh(
+      storeScene,
+      new THREE.ConeGeometry(0.32, 0.55, 4, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.75 }),
+      (standeePos.x + scanPhonePos.x) / 2, (standeePos.y + scanPhonePos.y) / 2, (standeePos.z + scanPhonePos.z) / 2
+    );
+    scanPyramid.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), scanDir);
+
+    // ── Scene 3: Low-tower place ──
+    const towerScene = makeEcoScene();
+    const hillMat = new THREE.MeshStandardMaterial({ color: 0x14532d, emissive: 0x052e16, emissiveIntensity: 0.5, roughness: 0.85, flatShading: true });
+    [[-0.95, -0.85, 1.1, 0.85], [0.95, -1.0, 0.95, 0.7], [-1.5, 0.25, 0.55, 0.45]].forEach(([x, z, r, sy]) => {
+      addMesh(towerScene, new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), hillMat, x, 0, z).scale.y = sy;
+    });
+    // Lone distant tower on the tallest hill
+    addMesh(towerScene, new THREE.CylinderGeometry(0.05, 0.16, 0.85, 4, 3), new THREE.MeshBasicMaterial({ color: 0x94a3b8, wireframe: true }), -0.95, 1.34, -0.85);
+    addBox(towerScene, 0.24, 0.03, 0.03, -0.95, 1.6, -0.85, hubMat);
+    addBox(towerScene, 0.18, 0.03, 0.03, -0.95, 1.45, -0.85, hubMat);
+    const towerBeacon = addMesh(towerScene, new THREE.SphereGeometry(0.07, 16, 16), new THREE.MeshBasicMaterial({ color: 0xf43f5e }), -0.95, 1.8, -0.85);
+    // Weak signal rings fade out before they reach the village
+    const signalRings = [0, 1, 2].map(() => {
+      const ring = addMesh(
+        towerScene,
+        new THREE.TorusGeometry(0.75, 0.018, 8, 32, Math.PI * 0.7),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0, depthWrite: false }),
+        -0.95, 1.75, -0.85
+      );
+      ring.rotation.z = Math.PI * 0.15;
+      return ring;
+    });
+    // Village houses
+    const houseMat = stdMat(0x334155, 0x1e293b, 0.5, 0.6);
+    const roofMat = stdMat(0x7c2d12, 0xc2410c, 0.45, 0.6);
+    [[0.55, 0.35], [1.25, 0.1], [-0.35, 0.6], [1.15, 0.85]].forEach(([x, z]) => {
+      addBox(towerScene, 0.42, 0.3, 0.38, x, 0.15, z, houseMat);
+      addMesh(towerScene, new THREE.ConeGeometry(0.36, 0.24, 4), roofMat, x, 0.42, z).rotation.y = Math.PI / 4;
+      addBox(towerScene, 0.1, 0.12, 0.01, x, 0.16, z + 0.195, windowGlowMat);
+    });
+    // Two phones still paying each other with no tower in reach
+    const payPhones = [new THREE.Vector3(-0.55, 0.55, 1.35), new THREE.Vector3(0.6, 0.55, 1.45)];
+    payPhones.forEach((pos, i) => {
+      const phone = addBox(towerScene, 0.26, 0.5, 0.03, pos.x, pos.y, pos.z, ecoPhoneMat);
+      phone.rotation.y = i === 0 ? 0.5 : -0.5;
+      addNeonEdges(phone, 0x00f0ff, 1);
+    });
+    const payCoin = addMesh(towerScene, ecoCoinGeo, stdMat(0x34d399, 0x10b981, 0.95), 0, 0.55, 1.4);
+
+    g3.userData = {
+      ecoGroup, floorRing1, floorRing2,
+      ecoScenes: [rideScene, storeScene, towerScene],
+      rideWheels, bikeGroup, carGroup, rideCoin, routeCurve, ridePins,
+      storePin, scanPyramid,
+      signalRings, towerBeacon, payCoin, payPhones
+    };
 
     // ─────────────────────────────────────────────────────────────
     // Slide 4: Applied Cryptography (3D Master Key & Interlocking Hash Chain)
@@ -2830,7 +2805,7 @@ class PresentationApp {
                   </div>
                 </div>
                 <video id="problem-live-video" src="problem-live.mp4" poster="video_preview.jpg" playsinline preload="auto" onclick="presentation.toggleProblemVideoPlay()"></video>
-                <div class="kiosk-start-overlay hidden" id="problem-start-overlay" onclick="presentation.startProblemVideoWithSound()">
+                <div class="kiosk-start-overlay" id="problem-start-overlay" onclick="presentation.startProblemVideoWithSound()">
                   <div class="kiosk-play-pulse-btn">
                     <span class="kiosk-play-icon">▶</span>
                   </div>
@@ -2846,14 +2821,11 @@ class PresentationApp {
         </div>
       `;
 
-      // Autoplay problem live video with sound & safety fallback
+      // Prepare the problem video; it stays paused until the presenter presses play
       setTimeout(() => {
         const vid = document.getElementById('problem-live-video');
         const progressFill = document.getElementById('problem-progress-fill');
         const nextBtn = document.getElementById('problem-next-btn');
-        const soundBtn = document.getElementById('problem-sound-btn');
-        const soundState = document.getElementById('problem-sound-state');
-        const overlay = document.getElementById('problem-start-overlay');
 
         if (!vid) return;
 
@@ -2873,26 +2845,6 @@ class PresentationApp {
           if (progressFill) progressFill.style.width = '100%';
           this.showToast('✨ That is the problem. Press [Space] for the fix.');
         };
-
-        const playPromise = vid.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              if (overlay) overlay.classList.add('hidden');
-              if (soundBtn) soundBtn.classList.add('active');
-              if (soundState) soundState.textContent = 'Audio: ON 🔊';
-              this.routeVoice(vid, 'kiosk-eq');
-            })
-            .catch(err => {
-              console.warn('Autoplay unmuted blocked by policy; waiting for user gesture at 0:', err);
-              vid.pause();
-              vid.currentTime = 0;
-              if (overlay) overlay.classList.remove('hidden');
-              if (soundBtn) soundBtn.classList.remove('active');
-              if (soundState) soundState.textContent = 'Click for Sound 🔊';
-              this.showToast('🔊 Tap the phone to play the testimonials with sound');
-            });
-        }
       }, 60);
 
     } else if (data.id === 'solution') {
@@ -3058,14 +3010,14 @@ class PresentationApp {
           ${data.subtitle ? `<div class="slide-subtitle">${data.subtitle}</div>` : ''}
           ${data.bullets.length ? `<div class="bullets-stack">` : '<div hidden>'}
             ${data.bullets.map((b, bi) => `
-              <div class="bullet-item ${b.glow || ''}" style="--i:${bi}">
+              <div class="bullet-item ${b.glow || ''}${data.id === 'target-users' && bi === 0 ? ' eco-active' : ''}" style="--i:${bi}"${data.id === 'target-users' ? ` data-eco-scene="${bi}" onclick="presentation.jumpEcoScene(${bi})"` : ''}>
                 <span class="bullet-icon">${b.icon}</span>
                 <span class="bullet-text">${b.text}</span>
               </div>
             `).join('')}
           </div>
           ${data.actionBtn ? `
-            <button class="slide-action-btn" onclick="presentation.triggerSlideAction('${data.actionBtn.fn}')">
+            <button class="slide-action-btn"${data.id === 'target-users' ? ' data-eco-action' : ''} onclick="presentation.triggerSlideAction('${data.actionBtn.fn}')">
               ${data.actionBtn.text}
             </button>
           ` : ''}
@@ -3148,15 +3100,14 @@ class PresentationApp {
 
     if (overlay) overlay.classList.add('hidden');
     vid.currentTime = 0;
-    vid.muted = false;
     vid.volume = 1.0;
     this.startPitchClock();
 
     vid.play().then(() => {
-      if (soundBtn) soundBtn.classList.add('active');
-      if (soundState) soundState.textContent = 'Audio: ON 🔊';
-      if (eq) eq.classList.remove('muted');
-      this.routeVoice(vid, 'kiosk-eq');
+      if (soundBtn) soundBtn.classList.toggle('active', !vid.muted);
+      if (soundState) soundState.textContent = vid.muted ? 'Audio: OFF 🔇' : 'Audio: ON 🔊';
+      if (eq) eq.classList.toggle('muted', vid.muted);
+      if (!vid.muted) this.routeVoice(vid, 'kiosk-eq');
       this.showToast('🎙️ Real users, real failures, playing from the start');
     }).catch(err => {
       console.warn('Playback error:', err);
@@ -3164,6 +3115,23 @@ class PresentationApp {
       if (eq) eq.classList.add('muted');
       vid.play().catch(() => {});
     });
+  }
+
+  // Slide 1's video waits for a deliberate press. Returns true if the press was used on it.
+  handleProblemVideoPress() {
+    if (this.currentSlideIndex !== 0) return false;
+    const vid = document.getElementById('problem-live-video');
+    const overlay = document.getElementById('problem-start-overlay');
+    if (!vid) return false;
+    if (overlay && !overlay.classList.contains('hidden')) {
+      this.startProblemVideoWithSound();
+      return true;
+    }
+    if (vid.paused && !vid.ended && !vid.error) {
+      this.toggleProblemVideoPlay();
+      return true;
+    }
+    return false;
   }
 
   toggleProblemVideoPlay() {
@@ -3192,22 +3160,16 @@ class PresentationApp {
     const vid = document.getElementById('problem-live-video');
     const btn = document.getElementById('problem-sound-btn');
     const stateSpan = document.getElementById('problem-sound-state');
-    const overlay = document.getElementById('problem-start-overlay');
     const eq = document.getElementById('kiosk-eq');
     if (!vid) return;
 
     vid.muted = !vid.muted;
     if (!vid.muted) {
       vid.volume = 1.0;
-      if (vid.currentTime < 6.0) {
-        vid.currentTime = 0;
-      }
-      vid.play().catch(() => {});
-      if (overlay) overlay.classList.add('hidden');
       if (btn) btn.classList.add('active');
       if (stateSpan) stateSpan.textContent = 'Audio: ON 🔊';
       if (eq) eq.classList.remove('muted');
-      this.routeVoice(vid, 'kiosk-eq');
+      if (!vid.paused) this.routeVoice(vid, 'kiosk-eq');
       this.showToast('🎙️ Testimonial audio on');
     } else {
       if (btn) btn.classList.remove('active');
@@ -3377,21 +3339,138 @@ class PresentationApp {
     }
   }
 
+  // Slide 4: Space goes to the next place, then on to the next slide after the last one
   scanUserSegments() {
+    const active = this.ecoActiveScene();
+    if (active >= 2) {
+      this.nextSlide();
+      return;
+    }
     sfx.verifySuccess();
-    this.showToast('📍 Ecosystem Connected: Tea Merchant Standee & Transit Bus Synced');
-    const grp = this.slideObjects[3]?.userData;
-    if (grp) {
-      if (grp.shopPin) {
-        grp.shopPin.position.y += 0.35;
-        setTimeout(() => grp.shopPin.position.y -= 0.35, 300);
-      }
-      if (grp.busPin) {
-        setTimeout(() => {
-          if (grp.busPin) grp.busPin.position.y += 0.35;
-          setTimeout(() => { if (grp.busPin) grp.busPin.position.y -= 0.35; }, 300);
-        }, 150);
-      }
+    this.jumpEcoScene(active + 1);
+    this.showToast(['🛵 Ride-sharing platforms', '🏪 General stores', '📡 Low-tower places'][active + 1]);
+  }
+
+  ecoActiveScene() {
+    const tour = this.ecoTour;
+    if (!tour) return 0;
+    const pos = tour.jump ? tour.jump.to : tour.pos;
+    return ((Math.floor(pos) % 3) + 3) % 3;
+  }
+
+  jumpEcoScene(scene) {
+    const tour = this.ecoTour;
+    if (!tour) return;
+    const base = Math.floor(tour.jump ? tour.jump.to : tour.pos);
+    let delta = (((scene - base) % 3) + 3) % 3;
+    if (delta === 2) delta = -1; // Shortest way, so no middle scene flashes past
+    tour.jump = { from: tour.pos, to: base + delta + 0.225, start: performance.now() };
+  }
+
+  orbitEcoScene(dx, dy) {
+    const orbit = this.ecoOrbit;
+    orbit.targetYaw = Math.max(-1.1, Math.min(1.1, orbit.targetYaw + dx * 0.005));
+    orbit.targetPitch = Math.max(-0.2, Math.min(0.45, orbit.targetPitch + dy * 0.005));
+    orbit.lastInput = performance.now();
+  }
+
+  // Slide 4: moves through the three places in about 10 seconds, then loops
+  animateEcoTour(data) {
+    const SCENE_MS = 10000 / 3;
+    const now = performance.now();
+    let tour = this.ecoTour;
+    if (!tour || tour.enterStamp !== this.sceneEnterTime) {
+      tour = this.ecoTour = {
+        pos: 0.225, jump: null, last: now, enterStamp: this.sceneEnterTime, shown: 0,
+        reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      };
+      this.ecoOrbit = { yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0, lastInput: 0 };
+    }
+    const dt = Math.min(100, now - tour.last);
+    tour.last = now;
+    const st = tour.reduced ? 0 : (now - tour.enterStamp) / 1000;
+    const clamp01 = x => Math.max(0, Math.min(1, x));
+    const smoother = x => {
+      const k = clamp01(x);
+      return k * k * k * (k * (k * 6 - 15) + 10);
+    };
+
+    if (tour.jump) {
+      const k = clamp01((now - tour.jump.start) / 1400);
+      tour.pos = tour.jump.from + (tour.jump.to - tour.jump.from) * smoother(k);
+      if (k >= 1) tour.jump = null;
+    } else if (!this.ecoDragging) {
+      tour.pos += dt / SCENE_MS;
+    }
+
+    // Each scene holds for 1.83s, then crossfades over 1.5s with its neighbour
+    const drift = tour.reduced ? 0 : 1;
+    data.ecoScenes.forEach((scene, i) => {
+      const s = (((tour.pos - (i + 0.5) + 1.5) % 3) + 3) % 3 - 1.5;
+      const weight = 1 - smoother((Math.abs(s) - 0.275) / 0.45);
+      scene.visible = weight > 0.002;
+      if (!scene.visible) return;
+      const away = (1 - weight) * drift;
+      const dir = s >= 0 ? 1 : -1;
+      scene.position.set(dir * away * 1.5, -0.96 + away * 0.35, dir * away * 0.6);
+      scene.rotation.y = dir * away * 0.7;
+      scene.scale.setScalar(Math.max(0.001, weight));
+    });
+
+    // Drag rotation eases back to centre a few seconds after the last input
+    const orbit = this.ecoOrbit;
+    if (!this.ecoDragging && now - orbit.lastInput > 3000) {
+      const decay = Math.pow(0.985, dt / 16.67);
+      orbit.targetYaw *= decay;
+      orbit.targetPitch *= decay;
+    }
+    const damp = 1 - Math.exp(-dt / 140);
+    orbit.yaw += (orbit.targetYaw - orbit.yaw) * damp;
+    orbit.pitch += (orbit.targetPitch - orbit.pitch) * damp;
+    data.ecoGroup.rotation.y = Math.sin(st * 0.22) * 0.28 + orbit.yaw;
+    data.ecoGroup.rotation.x = 0.2 + Math.sin(st * 0.31) * 0.035 + orbit.pitch;
+    data.ecoGroup.position.y = -0.22 + Math.sin(st * 0.5) * 0.025;
+    data.floorRing1.rotation.z = st * 0.08;
+    data.floorRing2.rotation.z = -st * 0.06;
+
+    const [rideScene, storeScene, towerScene] = data.ecoScenes;
+    if (rideScene.visible) {
+      data.rideWheels.forEach(wheel => { wheel.rotation.z = -st * 1.2; });
+      data.bikeGroup.position.x = 0.75 + Math.sin(st * 0.4) * 0.12;
+      data.carGroup.position.x = -0.95 + Math.sin(st * 0.33 + 1) * 0.1;
+      const t = (st * 0.16 + 0.5) % 1;
+      data.routeCurve.getPoint(t, data.rideCoin.position);
+      data.rideCoin.scale.setScalar(Math.max(0.001, Math.sqrt(Math.sin(t * Math.PI))));
+      data.rideCoin.rotation.y = st * 1.1;
+      data.ridePins.forEach((pin, i) => { pin.position.y = pin.userData.baseY + Math.sin(st * 0.9 + i) * 0.05; });
+    }
+    if (storeScene.visible) {
+      data.storePin.position.y = data.storePin.userData.baseY + Math.sin(st * 0.9) * 0.05;
+      data.scanPyramid.material.opacity = 0.45 + 0.3 * Math.sin(st * 1.1);
+    }
+    if (towerScene.visible) {
+      data.signalRings.forEach((ring, i) => {
+        const p = (st * 0.22 + i / 3) % 1;
+        ring.scale.setScalar(0.35 + 0.65 * p);
+        ring.material.opacity = 0.75 * (1 - p) * Math.min(1, p * 6);
+      });
+      data.towerBeacon.scale.setScalar(1 + 0.15 * Math.sin(st * 1.4));
+      const t = (st * 0.16 + 0.5) % 1;
+      data.payCoin.position.lerpVectors(data.payPhones[0], data.payPhones[1], t);
+      data.payCoin.position.y += Math.sin(t * Math.PI) * 0.55;
+      data.payCoin.scale.setScalar(Math.max(0.001, Math.sin(t * Math.PI)));
+      data.payCoin.rotation.y = st * 1.1;
+    }
+
+    // Keep the left column in step, only touching the DOM when the scene changes
+    const active = this.ecoActiveScene();
+    if (active !== tour.shown) {
+      tour.shown = active;
+      document.querySelectorAll('.bullet-item[data-eco-scene]').forEach(el => {
+        el.classList.toggle('eco-active', Number(el.dataset.ecoScene) === active);
+      });
+      const btn = document.querySelector('[data-eco-action]');
+      if (btn) btn.textContent = active >= 2 ? '➡️ Next Slide [Space]' : '📍 Next Place [Space]';
     }
   }
 
@@ -3733,8 +3812,6 @@ class PresentationApp {
       }
     } catch (_) {}
 
-    this.showToast(`👏 Double snap heard ➔ next slide`);
-
     try {
       const clapBtn = document.getElementById('clap-toggle-btn');
       const fsClapBtn = document.getElementById('fs-clap-btn');
@@ -3763,7 +3840,9 @@ class PresentationApp {
       });
     } catch (_) {}
 
-    // Advance to next slide unconditionally!
+    // Slide 1's video takes the snap first; otherwise advance to the next slide
+    if (this.handleProblemVideoPress()) return;
+    this.showToast(`👏 Double snap heard ➔ next slide`);
     this.nextSlide();
   }
 
@@ -3818,12 +3897,12 @@ class PresentationApp {
       this.channel.onmessage = ({ data }) => {
         if (!data) return;
         if (data.type === 'goto') { this.startPitchClock(); this.goToSlide(data.index); }
-        else if (data.type === 'next') { this.startPitchClock(); this.nextSlide(); }
+        else if (data.type === 'next') { this.startPitchClock(); if (!this.handleProblemVideoPress()) this.nextSlide(); }
         else if (data.type === 'prev') this.prevSlide();
         else if (data.type === 'action') {
           this.startPitchClock();
           const cur = SLIDES[this.currentSlideIndex];
-          if (cur && cur.actionBtn) this.triggerSlideAction(cur.actionBtn.fn); else this.nextSlide();
+          if (!this.handleProblemVideoPress()) { if (cur && cur.actionBtn) this.triggerSlideAction(cur.actionBtn.fn); else this.nextSlide(); }
         }
         else if (data.type === 'reset') this.resetPitchClock();
         else if (data.type === 'blackout') this.toggleBlackout();
@@ -3985,7 +4064,8 @@ class PresentationApp {
         const slideData = SLIDES[idx];
         const slideId = slideData ? slideData.id : null;
         const scaleVal = this.getSlideScale(slideId) * scaleFactor;
-        grp.position.set(0, posY, 0);
+        // Slide 4's text card is the tallest on phones, so its model sits higher to stay clear of it
+        grp.position.set(0, slideId === 'target-users' && aspect < 0.55 ? 2.0 : posY, 0);
         grp.scale.set(scaleVal, scaleVal, scaleVal);
       });
     } else {
@@ -4038,13 +4118,8 @@ class PresentationApp {
     document.addEventListener('mozfullscreenchange', onFullscreenChange);
     document.addEventListener('MSFullscreenChange', onFullscreenChange);
 
-    // First-interaction gesture: auto-start problem video with sound on first user gesture & unlock WebAudio
+    // First-interaction gesture: unlock WebAudio (the first video still waits for its own press)
     const triggerAudioOnFirstGesture = () => {
-      const vid = document.getElementById('problem-live-video');
-      const overlay = document.getElementById('problem-start-overlay');
-      if (vid && this.currentSlideIndex === 0 && (vid.paused || (overlay && !overlay.classList.contains('hidden')))) {
-        this.startProblemVideoWithSound();
-      }
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!this.clapAudioCtx && AudioCtx) {
         this.clapAudioCtx = new AudioCtx();
@@ -4059,12 +4134,7 @@ class PresentationApp {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
         e.preventDefault();
-        const vid = document.getElementById('problem-live-video');
-        const overlay = document.getElementById('problem-start-overlay');
-        if (this.currentSlideIndex === 0 && vid && (vid.paused || (overlay && !overlay.classList.contains('hidden')))) {
-          this.startProblemVideoWithSound();
-          return;
-        }
+        if (this.handleProblemVideoPress()) return;
         const currentSlide = SLIDES[this.currentSlideIndex];
         if (e.key === ' ' && currentSlide && currentSlide.actionBtn) {
           this.triggerSlideAction(currentSlide.actionBtn.fn);
@@ -4117,13 +4187,15 @@ class PresentationApp {
 
     // Mouse Drag for 3D Camera Orbit
     this.container.addEventListener('mousedown', (e) => {
-      this.isDragging = true;
+      if (this.currentSlideIndex === 3) this.ecoDragging = true;
+      else this.isDragging = true;
       this.prevMouseX = e.clientX;
       this.prevMouseY = e.clientY;
     });
 
     window.addEventListener('mouseup', () => {
       this.isDragging = false;
+      this.ecoDragging = false;
     });
 
     window.addEventListener('pointermove', (e) => {
@@ -4151,6 +4223,11 @@ class PresentationApp {
           }
         }
       }
+      if (this.ecoDragging) {
+        this.orbitEcoScene(e.clientX - this.prevMouseX, e.clientY - this.prevMouseY);
+        this.prevMouseX = e.clientX;
+        this.prevMouseY = e.clientY;
+      }
       if (this.isDragging) {
         const dx = e.clientX - this.prevMouseX;
         const dy = e.clientY - this.prevMouseY;
@@ -4172,13 +4249,19 @@ class PresentationApp {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchStartTime = Date.now();
-        this.isDragging = true;
+        if (this.currentSlideIndex === 3 && e.target && e.target.closest && e.target.closest('#canvas-container')) this.ecoDragging = true;
+        else this.isDragging = true;
         this.prevMouseX = e.touches[0].clientX;
         this.prevMouseY = e.touches[0].clientY;
       }
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
+      if (this.ecoDragging && e.touches.length === 1) {
+        this.orbitEcoScene((e.touches[0].clientX - this.prevMouseX) * 1.2, (e.touches[0].clientY - this.prevMouseY) * 1.2);
+        this.prevMouseX = e.touches[0].clientX;
+        this.prevMouseY = e.touches[0].clientY;
+      }
       if (this.isDragging && e.touches.length === 1) {
         const dx = e.touches[0].clientX - this.prevMouseX;
         const dy = e.touches[0].clientY - this.prevMouseY;
@@ -4191,6 +4274,8 @@ class PresentationApp {
     }, { passive: true });
 
     window.addEventListener('touchend', (e) => {
+      const wasEcoDrag = this.ecoDragging;
+      this.ecoDragging = false;
       this.isDragging = false;
 
       if (e.changedTouches.length === 1) {
@@ -4201,11 +4286,11 @@ class PresentationApp {
         const elapsed = Date.now() - touchStartTime;
 
         // Intentional swipe gesture detection (horizontal, fast, > 48px)
-        if (elapsed < 420 && Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35) {
+        if (!wasEcoDrag && elapsed < 420 && Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35) {
           const target = e.target;
           if (!target || (!target.closest('button') && !target.closest('.slide-dot') && !target.closest('video') && !target.closest('aside'))) {
             if (deltaX < 0) {
-              this.nextSlide();
+              if (!this.handleProblemVideoPress()) this.nextSlide();
             } else {
               this.prevSlide();
             }
@@ -4364,42 +4449,7 @@ class PresentationApp {
         }
       }
       else if (grp.userData.ecoGroup) {
-        grp.userData.ecoGroup.rotation.y = time * 0.35;
-        grp.userData.ecoGroup.rotation.x = 0.22 + Math.sin(time * 0.6) * 0.05;
-        grp.userData.ecoGroup.position.y = -0.22 + Math.sin(time * 1.6) * 0.04;
-
-        if (grp.userData.floorRing1) grp.userData.floorRing1.rotation.z = time * 0.6;
-        if (grp.userData.floorRing2) grp.userData.floorRing2.rotation.z = -time * 0.5;
-        if (grp.userData.scanPyramid) {
-          const pulse = 1.0 + Math.sin(time * 7.0) * 0.15;
-          grp.userData.scanPyramid.scale.set(pulse, 1.0, pulse);
-          if (grp.userData.scanPyramid.material) {
-            grp.userData.scanPyramid.material.opacity = 0.55 + Math.sin(time * 8.0) * 0.35;
-          }
-        }
-        if (grp.userData.ecoHUD) {
-          grp.userData.ecoHUD.position.y = 1.45 + Math.sin(time * 1.5) * 0.05;
-        }
-        if (grp.userData.shopPin) {
-          grp.userData.shopPin.position.y = 1.85 + Math.abs(Math.sin(time * 2.6)) * 0.12;
-        }
-        if (grp.userData.busPin) {
-          grp.userData.busPin.position.y = 1.45 + Math.abs(Math.sin(time * 2.6 + 1.2)) * 0.12;
-        }
-        if (grp.userData.busWheels) {
-          grp.userData.busWheels.forEach(w => {
-            w.rotation.z = -time * 4.5;
-          });
-        }
-        if (grp.userData.tokenArcCoins) {
-          grp.userData.tokenArcCoins.forEach(tc => {
-            const t = (time * 0.75 + tc.userData.phase) % 1;
-            tc.position.x = -1.15 + t * 2.2;
-            tc.position.y = -0.2 + Math.sin(t * Math.PI) * 0.95;
-            tc.position.z = -0.3 + t * 0.75;
-            tc.rotation.y = time * 5.0;
-          });
-        }
+        this.animateEcoTour(grp.userData);
       }
       else if (grp.userData.cryptoGroup) {
         grp.userData.cryptoGroup.rotation.y = time * 0.36;
