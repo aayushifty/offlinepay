@@ -1000,7 +1000,7 @@ const SLIDES = [
     prompter: {
       pitchScript: `"Enough talk. Let me show you. Both of these phones are in airplane mode, no internet at all. The merchant shows a QR. I scan it and confirm one hundred fifty rupees. My phone seals a voucher, like signing a cheque, and passes it across. The merchant checks the seal right there: paid, in about two seconds. And the moment signal comes back, it settles with the wallet on its own."`,
       technicalHighlight: `No server at the moment of payment. The customer's phone signs the voucher with a key locked in its security chip; the merchant's phone verifies that signature locally. Settlement happens later, in the background.`,
-      demoCue: `Turn on airplane mode on both phones BEFORE this slide and show the judges. Demo on the real phones (press "On real phones" to dim the screen). If anything misbehaves, switch back and press Space to step through the on-screen demo instead: 5 steps, then Space moves to Slide 3.`,
+      demoCue: `The demo video starts by itself (muted, looping): offline payment, tampered voucher rejected, auto-settle. Just narrate over it; click the video to pause/resume. Space highlights the next step on the left; after step 5, Space moves to Slide 3. Want to show real phones instead? Press "On real phones" to pause and dim the video.`,
       anticipatedQA: [
         { q: 'Is this a real working app or a mock-up?', a: 'The phones run our working prototype. The on-screen version shows exactly the same five steps, so you can follow along from the back of the room.' },
         { q: 'Does the merchant need new hardware?', a: 'No. Just the phone they already have. Camera to scan, screen to show the QR. Zero extra cost.' },
@@ -2702,6 +2702,8 @@ class PresentationApp {
       existingProblemVid.currentTime = 0;
       existingProblemVid.muted = true;
     }
+    const existingDemoVid = document.getElementById('solution-demo-video');
+    if (existingDemoVid) existingDemoVid.pause();
     clearTimeout(this.demoTimer);
 
     this.currentSlideIndex = index;
@@ -2848,8 +2850,7 @@ class PresentationApp {
       }, 60);
 
     } else if (data.id === 'solution') {
-      // Slide 2: Live demo stage. Presenter demos on real phones; the stage is the visual backup.
-      const qr = this.buildDemoQR();
+      // Slide 2: Recorded demo video loops (muted) while the presenter narrates; real phones stay as an option.
       viewport.innerHTML = `
         <div class="problem-split-container demo-split">
           <div class="problem-left-col">
@@ -2873,82 +2874,12 @@ class PresentationApp {
           </div>
 
           <div class="problem-right-col">
-            <div class="demo-stage" id="demo-stage" data-step="0">
-              <div class="demo-phone demo-customer">
-                <div class="demo-status"><span class="demo-net">✈ No internet</span><span>9:41</span></div>
-                <div class="demo-app-head">Customer wallet</div>
-                <div class="demo-screen">
-                  <div class="demo-view" data-steps="0">
-                    <div class="demo-label">Offline balance</div>
-                    <div class="demo-amount">Rs. 2,000</div>
-                    <div class="demo-note">Works with zero bars</div>
-                  </div>
-                  <div class="demo-view" data-steps="1">
-                    <div class="demo-viewfinder"><span></span><span></span><span></span><span></span><div class="demo-scanline"></div></div>
-                    <div class="demo-note">Point camera at the QR</div>
-                  </div>
-                  <div class="demo-view" data-steps="2">
-                    <div class="demo-label">Pay to</div>
-                    <div class="demo-payee">Shyam Tea Stall</div>
-                    <div class="demo-amount">Rs. 150</div>
-                    <div class="demo-confirm">Confirm ✓</div>
-                  </div>
-                  <div class="demo-view" data-steps="3 4">
-                    <div class="demo-seal">🔏</div>
-                    <div class="demo-label">Sealed voucher</div>
-                    <div class="demo-payee">#102 · Rs. 150</div>
-                    <div class="demo-note">Balance now Rs. 1,850</div>
-                  </div>
-                  <div class="demo-view" data-steps="5">
-                    <div class="demo-big-check">✓</div>
-                    <div class="demo-payee">Synced to wallet</div>
-                    <div class="demo-note">Voucher #102 settled</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="demo-link">
-                <div class="demo-token" id="demo-token">🔏 #102</div>
-                <div class="demo-link-line"></div>
-                <div class="demo-link-label" id="demo-link-label">No internet</div>
-              </div>
-
-              <div class="demo-phone demo-merchant">
-                <div class="demo-status"><span class="demo-net">✈ No internet</span><span>9:41</span></div>
-                <div class="demo-app-head">Shyam Tea Stall</div>
-                <div class="demo-screen">
-                  <div class="demo-view" data-steps="0">
-                    <div class="demo-label">Ready to receive</div>
-                    <div class="demo-amount">Rs. 150</div>
-                    <div class="demo-note">Tea + samosa</div>
-                  </div>
-                  <div class="demo-view" data-steps="1 2">
-                    <div class="demo-qr">${qr}</div>
-                    <div class="demo-note">Scan to pay Rs. 150</div>
-                  </div>
-                  <div class="demo-view" data-steps="3">
-                    <div class="demo-spinner"></div>
-                    <div class="demo-label">Checking seal…</div>
-                    <div class="demo-note">On this phone, no server</div>
-                  </div>
-                  <div class="demo-view" data-steps="4">
-                    <div class="demo-big-check">✓</div>
-                    <div class="demo-payee">Rs. 150 received</div>
-                    <div class="demo-note" id="demo-verify-time">Verified offline</div>
-                    <div class="demo-checks">Seal valid · #102 is new</div>
-                  </div>
-                  <div class="demo-view" data-steps="5">
-                    <div class="demo-big-check">✓</div>
-                    <div class="demo-payee">Settled to bank</div>
-                    <div class="demo-note">eSewa / Khalti ledger updated</div>
-                  </div>
-                </div>
-              </div>
-
+            <div class="demo-stage demo-video-stage" id="demo-stage" data-step="0">
+              <video id='solution-demo-video' src="offlinepay-demo.mp4" autoplay muted loop playsinline preload="auto" onclick="presentation.toggleSolutionVideoPlay()"></video>
               <div class="demo-real-overlay">
                 <div class="demo-real-badge"><span class="live-dot-pulse demo-live-dot"></span> LIVE ON REAL PHONES</div>
                 <div class="demo-real-check">✈ Both phones in airplane mode</div>
-                <div class="demo-real-hint">Press 📱 again to bring the on-screen demo back</div>
+                <div class="demo-real-hint">Press 📱 again to bring the demo video back</div>
               </div>
             </div>
             <div class="demo-caption" id="demo-caption">Press Space to start. Both phones stay offline the whole time.</div>
@@ -2958,6 +2889,8 @@ class PresentationApp {
       this.demoStep = 0;
       this.demoRealMode = false;
       this.demoSetStep(0, true);
+      const demoVid = document.getElementById('solution-demo-video');
+      if (demoVid) { demoVid.currentTime = 0; demoVid.play().catch(() => {}); }
 
     } else if (data.id === 'comparison') {
       // Slide 6: Market Comparison Table
@@ -3314,9 +3247,18 @@ class PresentationApp {
     if (!stage) return;
     this.demoRealMode = typeof force === 'boolean' ? force : !this.demoRealMode;
     stage.classList.toggle('real-mode', this.demoRealMode);
+    const demoVid = document.getElementById('solution-demo-video');
+    if (demoVid) { if (this.demoRealMode) demoVid.pause(); else demoVid.play().catch(() => {}); }
     const btn = document.getElementById('demo-real-btn');
     if (btn) btn.classList.toggle('active', this.demoRealMode);
     sfx.click();
+  }
+
+  toggleSolutionVideoPlay() {
+    const vid = document.getElementById('solution-demo-video');
+    if (!vid) return;
+    if (vid.paused) { vid.play().catch(() => {}); this.showToast('▶️ Demo video playing'); }
+    else { vid.pause(); this.showToast('⏸️ Demo video paused'); }
   }
 
   verifyHashChain() {

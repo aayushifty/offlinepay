@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OfflinePay demo stage</title>
+<style>
+  :root { --bg:#060911; --card:rgba(13,20,36,.9); --line:rgba(255,255,255,.12); --green:#10b981; --cyan:#00f0ff; --red:#ff3366; --purple:#c084fc; --muted:#cbd5e1; --dim:#94a3b8; }
+  * { box-sizing:border-box; margin:0; }
+  html,body { width:1920px; height:1080px; overflow:hidden; background:var(--bg); color:#fff; font-family:'Segoe UI',Inter,system-ui,sans-serif; }
+  body { background: radial-gradient(1200px 700px at 50% 40%, #0d1b2e 0%, var(--bg) 70%); }
+  .grid { position:absolute; inset:0; background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px); background-size:60px 60px; opacity:.18; mask-image:radial-gradient(circle at 50% 50%,#000 30%,transparent 75%); }
+  .stage { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:44px; }
+  .phone-col { display:flex; flex-direction:column; align-items:center; gap:8px; transition:opacity .4s, filter .4s; }
+  .scan[hidden] { display:none; }
+  .who { font-size:24px; font-weight:700; letter-spacing:.02em; display:flex; gap:10px; align-items:center; }
+  .who .tag { font-size:15px; font-weight:700; padding:4px 12px; border-radius:99px; }
+  .a .tag { background:rgba(16,185,129,.18); color:#4ade80; border:1px solid rgba(74,222,128,.5); }
+  .b .tag { background:rgba(192,132,252,.18); color:var(--purple); border:1px solid rgba(192,132,252,.5); }
+  .phone { position:relative; width:476px; height:1003px; padding:10px; border-radius:52px; background:#11151d; border:2px solid #2a3140; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 6px #0a0d13; transition:box-shadow .4s; }
+  .phone.focus.a-glow { box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 6px #0a0d13, 0 0 60px rgba(16,185,129,.55); }
+  .phone.focus.b-glow { box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 6px #0a0d13, 0 0 60px rgba(192,132,252,.55); }
+  .screen { width:452px; height:979px; border-radius:42px; overflow:hidden; position:relative; background:#fff; }
+  .screen iframe { width:390px; height:844px; border:0; transform:scale(1.16); transform-origin:0 0; }
+  .center { width:600px; display:flex; flex-direction:column; gap:24px; }
+  .scan { display:flex; flex-direction:column; align-items:center; gap:12px; padding:22px; border-radius:22px; background:rgba(0,240,255,.08); border:2px solid rgba(0,240,255,.55); box-shadow:0 0 50px rgba(0,240,255,.2); text-align:center; }
+  .scan b { font-size:18px; letter-spacing:.2em; color:var(--cyan); }
+  .scan div { font-size:30px; font-weight:800; }
+  .scan .flow { display:flex; align-items:center; gap:16px; font-size:22px; font-weight:700; color:var(--muted); }
+  .scan .arrows { font-size:40px; color:var(--cyan); letter-spacing:-6px; animation:flow .9s linear infinite; }
+  .scan.toA .arrows { transform:scaleX(-1); }
+  @keyframes flow { 0% { opacity:.25; } 50% { opacity:1; } 100% { opacity:.25; } }
+  .brand { display:flex; align-items:center; gap:14px; font-size:26px; font-weight:800; letter-spacing:.04em; }
+  .brand i { width:44px; height:44px; border-radius:12px; background:var(--green); color:#041016; display:grid; place-items:center; font-style:normal; font-size:18px; font-weight:900; }
+  .net { display:flex; align-items:center; gap:16px; padding:18px 24px; border-radius:18px; font-size:26px; font-weight:700; border:1px solid; transition:all .5s; }
+  .net.on { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.5); color:#4ade80; }
+  .net.off { background:rgba(255,51,102,.12); border-color:rgba(255,51,102,.6); color:#ff6b8f; box-shadow:0 0 40px rgba(255,51,102,.25); }
+  .net small { display:block; font-size:17px; font-weight:500; color:var(--muted); }
+  .bars { display:flex; gap:4px; align-items:flex-end; height:30px; }
+  .bars span { width:7px; border-radius:2px; background:currentColor; transition:opacity .5s; }
+  .net.off .bars span { opacity:.18; }
+  .cap { padding:30px 32px; border-radius:22px; background:var(--card); border:1px solid var(--line); min-height:230px; }
+  .cap .num { font-size:17px; font-weight:800; letter-spacing:.18em; color:var(--cyan); text-transform:uppercase; }
+  .cap h2 { font-size:46px; line-height:1.12; margin-top:10px; font-weight:800; }
+  .cap p { font-size:24px; line-height:1.4; color:var(--muted); margin-top:14px; }
+  .cap.bad .num { color:var(--red); } .cap.ok .num { color:#4ade80; }
+  .cap.swap { animation:swap .5s ease; }
+  @keyframes swap { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+  .steps { display:flex; gap:8px; }
+  .steps span { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.12); transition:background .4s; }
+  .steps span.done { background:var(--green); } .steps span.cur { background:var(--cyan); }
+  .tap { position:absolute; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:rgba(0,240,255,.35); border:3px solid var(--cyan); pointer-events:none; animation:tap .7s ease-out forwards; z-index:50; }
+  @keyframes tap { 0% { transform:scale(.3); opacity:1; } 60% { opacity:.9; } 100% { transform:scale(1.5); opacity:0; } }
+  .card { position:absolute; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; background:radial-gradient(900px 500px at 50% 45%, #0e2231, var(--bg) 75%); transition:opacity .8s; text-align:center; }
+  .card.hide { opacity:0; pointer-events:none; }
+  .card .logo { width:110px; height:110px; border-radius:28px; background:var(--green); color:#041016; display:grid; place-items:center; font-size:44px; font-weight:900; box-shadow:0 0 80px rgba(16,185,129,.5); }
+  .card h1 { font-size:84px; font-weight:900; letter-spacing:-.01em; }
+  .card h1 em { font-style:normal; color:var(--green); }
+  .card p { font-size:32px; color:var(--muted); }
+  .card .pill { margin-top:10px; font-size:20px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--cyan); }
+</style>
+<div class="grid"></div>
+<div class="stage">
+  <div class="phone-col a">
+    <div class="who">Customer <span class="tag">PayA wallet</span></div>
+    <div class="phone" id="ph-a"><div class="screen"><iframe id="fa" src="http://localhost:8090/" allow="camera"></iframe></div></div>
+  </div>
+  <div class="center">
+    <div class="brand"><i>OP</i>OfflinePay · live demo</div>
+    <div class="net on" id="net"><div class="bars"><span style="height:8px"></span><span style="height:14px"></span><span style="height:21px"></span><span style="height:28px"></span></div><div><span id="net-t">Both phones online</span><small id="net-s">Normal signal</small></div></div>
+    <div class="cap" id="cap"><div class="num" id="cap-n">&nbsp;</div><h2 id="cap-t">&nbsp;</h2><p id="cap-s">&nbsp;</p></div>
+    <div class="steps" id="steps"></div>
+    <div class="scan" id="scan" hidden><b id="scan-n"></b><div id="scan-t"></div><div class="flow"><span id="scan-l"></span><span class="arrows">❯❯❯</span><span id="scan-r"></span></div></div>
+  </div>
+  <div class="phone-col b">
+    <div class="who">Merchant <span class="tag">PayB wallet</span></div>
+    <div class="phone" id="ph-b"><div class="screen"><iframe id="fb" src="http://localhost:8092/" allow="camera"></iframe></div></div>
+  </div>
+</div>
+<div class="card" id="card"><div class="logo">OP</div><h1 id="card-t">Offline<em>Pay</em></h1><p id="card-s">Two real wallets. Zero internet.</p><div class="pill" id="card-p">Live demo</div></div>
+<script>
+  const TOTAL = 7;
+  document.getElementById('steps').innerHTML = '<span></span>'.repeat(TOTAL);
+  window.stage = {
+    caption(n, title, sub, tone = '') {
+      const c = document.getElementById('cap');
+      c.className = 'cap ' + tone; void c.offsetWidth; c.classList.add('swap');
+      document.getElementById('cap-n').textContent = n ? `Step ${n} of ${TOTAL}` : 'Attack test';
+      document.getElementById('cap-t').textContent = title;
+      document.getElementById('cap-s').textContent = sub;
+      if (n) [...document.querySelectorAll('#steps span')].forEach((s, i) => s.className = i + 1 < n ? 'done' : i + 1 === n ? 'cur' : '');
+    },
+    net(on) {
+      document.getElementById('net').className = 'net ' + (on ? 'on' : 'off');
+      document.getElementById('net-t').textContent = on ? 'Both phones online' : '✈ Airplane mode: no internet';
+      document.getElementById('net-s').textContent = on ? 'Signal is back' : '0 bars on both phones';
+    },
+    focus(w) {
+      for (const k of ['a', 'b']) {
+        document.getElementById('ph-' + k).className = 'phone' + (w === k ? ` focus ${k}-glow` : '');
+        document.querySelector('.phone-col.' + k).classList.toggle('dim', !!w && w !== k);
+      }
+    },
+    // to = phone whose camera scans; the QR travels from the other phone to it.
+    scan(n, to) {
+      const s = document.getElementById('scan');
+      s.hidden = !n; if (!n) return;
+      s.className = 'scan ' + (to === 'a' ? 'toA' : 'toB');
+      document.getElementById('scan-n').textContent = `QR SCAN ${n} OF 2`;
+      document.getElementById('scan-t').textContent = to === 'a' ? "Customer scans the merchant's QR" : "Merchant scans the customer's QR";
+      document.getElementById('scan-l').textContent = 'Customer';
+      document.getElementById('scan-r').textContent = 'Merchant';
+    },
+    tap(x, y) { const d = document.createElement('div'); d.className = 'tap'; d.style.left = x + 'px'; d.style.top = y + 'px'; document.body.appendChild(d); setTimeout(() => d.remove(), 800); },
+    card(show, t, s, p) {
+      const c = document.getElementById('card');
+      if (t) { document.getElementById('card-t').innerHTML = t; document.getElementById('card-s').textContent = s; document.getElementById('card-p').textContent = p; }
+      c.classList.toggle('hide', !show);
+    },
+  };
+</script>
