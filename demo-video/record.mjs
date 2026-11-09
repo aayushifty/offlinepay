@@ -192,5 +192,7 @@ order.push({ ...order.at(-1), t: order.at(-1).t + 0.5 });
 fs.writeFileSync('frames/list.txt', order.slice(0, -1).map((o, i) =>
   `file '${o.f}'\nduration ${Math.max(0, order[i + 1].t - o.t).toFixed(4)}`).join('\n') + `\nfile '${order.at(-2).f}'\n`);
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', 'frames/list.txt',
-  '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', '-an', OUT], { stdio: 'inherit' });
+  // JPEG frames are full-range; hardware decoders show black for yuvj420p/level 5 video, so force standard TV-range BT.709 at level 4.1.
+  '-vf', 'fps=30,scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p', '-fps_mode', 'cfr', '-c:v', 'libx264', '-threads', '2', '-profile:v', 'high', '-level', '4.1',
+  '-preset', 'medium', '-crf', '20', '-color_range', 'tv', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-movflags', '+faststart', '-an', OUT], { stdio: 'inherit' });
 console.log(`wrote ${OUT}: ${times.length} frames, ${(order.at(-2).t - order[0].t).toFixed(1)}s`);
