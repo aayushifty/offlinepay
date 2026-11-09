@@ -1,6 +1,6 @@
 // OfflinePay pitch deck service worker: the deck keeps working with zero venue Wi-Fi.
 // Keep VERSION in sync with the ?v= query in index.html; a new version drops old caches.
-const VERSION = '20261109_v55';
+const VERSION = '20261109_v56';
 const CORE = `op-core-${VERSION}`;
 const MEDIA = `op-media-${VERSION}`;
 const FONTS = 'op-fonts-v1';

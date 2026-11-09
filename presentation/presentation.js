@@ -995,6 +995,7 @@ const SLIDES = [
       'Merchant verifies it offline',
       'Signal returns: auto-sync'
     ],
+    videoCues: [0, 11, 15.5, 19, 22, 44], // seconds in offlinepay-demo.mp4 where steps 1-5 begin
     bullets: [],
     actionBtn: { text: '▶ Next Step [Space]', fn: 'demoNextStep' },
     prompter: {
@@ -2882,7 +2883,7 @@ class PresentationApp {
                 <div class="demo-real-hint">Press 📱 again to bring the demo video back</div>
               </div>
             </div>
-            <div class="demo-caption" id="demo-caption">Press Space to start. Both phones stay offline the whole time.</div>
+            <div class="demo-caption" id="demo-caption">Both phones go into airplane mode and stay offline the whole time.</div>
           </div>
         </div>
       `;
@@ -2890,7 +2891,14 @@ class PresentationApp {
       this.demoRealMode = false;
       this.demoSetStep(0, true);
       const demoVid = document.getElementById('solution-demo-video');
-      if (demoVid) { demoVid.currentTime = 0; demoVid.play().catch(() => {}); }
+      if (demoVid) {
+        demoVid.currentTime = 0; demoVid.play().catch(() => {});
+        // The step list follows the video: light the last step whose cue has passed.
+        demoVid.ontimeupdate = () => {
+          const step = data.videoCues.reduce((s, cue, i) => (demoVid.currentTime >= cue ? i : s), 0);
+          if (step !== this.demoStep) { this.demoSetStep(step, true); this.broadcastState(); }
+        };
+      }
 
     } else if (data.id === 'comparison') {
       // Slide 6: Market Comparison Table
@@ -3185,7 +3193,7 @@ class PresentationApp {
     });
 
     const captions = [
-      'Press Space to start. Both phones stay offline the whole time.',
+      'Both phones go into airplane mode and stay offline the whole time.',
       'The merchant shows a payment QR. No internet on either phone.',
       'The customer scans it and confirms Rs. 150.',
       'The customer\'s phone seals a voucher and passes it across, phone to phone.',
@@ -3223,6 +3231,10 @@ class PresentationApp {
     }
 
     if (silent) return;
+    // Space / clicking a step jumps the demo video to that step's scene.
+    const cue = SLIDES[this.currentSlideIndex].videoCues?.[this.demoStep];
+    const demoVid = document.getElementById('solution-demo-video');
+    if (demoVid && cue != null) { demoVid.currentTime = cue; if (!this.demoRealMode) demoVid.play().catch(() => {}); }
     if (this.demoStep === 3) sfx.beamLaser();
     else if (this.demoStep === 5) sfx.slideChange();
     else if (this.demoStep !== 4) sfx.click();
