@@ -2884,7 +2884,7 @@ class PresentationApp {
 
           <div class="problem-right-col">
             <div class="demo-stage demo-video-stage" id="demo-stage" data-step="0">
-              <video id='solution-demo-video' src="offlinepay-demo.mp4" autoplay muted loop playsinline preload="auto" onclick="presentation.toggleSolutionVideoPlay()"></video>
+              <video id='solution-demo-video' src="offlinepay-demo.mp4" poster="demo_poster.jpg" autoplay muted loop playsinline preload="auto" onclick="presentation.toggleSolutionVideoPlay()"></video>
               <div class="demo-real-overlay">
                 <div class="demo-real-badge"><span class="live-dot-pulse demo-live-dot"></span> LIVE ON REAL PHONES</div>
                 <div class="demo-real-check">✈ Both phones in airplane mode</div>
