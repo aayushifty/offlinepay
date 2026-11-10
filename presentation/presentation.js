@@ -627,21 +627,22 @@ function createRevenueHUDTexture() {
 
   ctx.fillStyle = '#34d399';
   ctx.font = 'bold 38px monospace';
-  ctx.fillText('💰 OFFLINEPAY MONETIZATION MATRIX', 60, 80);
+  const W = 904; // canvas text never runs past the sign's edge
+  ctx.fillText('💰 HOW OFFLINEPAY EARNS', 60, 80, W);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 56px sans-serif';
-  ctx.fillText('3 Sustainable Revenue Streams', 60, 160);
+  ctx.fillText('3 Revenue Streams', 60, 160, W);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '34px monospace';
-  ctx.fillText('• Stream 1: Wallet Recovery Splits (Rs. 0.10–0.25 / Txn)', 60, 235);
-  ctx.fillText('• Stream 2: High-Volume Merchant Subs (Rs. 200–500 / Mo)', 60, 300);
-  ctx.fillText('• Stream 3: Commercial Bank SDK Annual Software License', 60, 365);
+  ctx.font = '36px sans-serif';
+  ctx.fillText('• Wallets: Rs. 0.10–0.25 per rescued payment', 60, 235, W);
+  ctx.fillText('• Fleets & canteens: Rs. 200–500 / month', 60, 300, W);
+  ctx.fillText('• Banks: annual SDK licence', 60, 365, W);
 
   ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 36px monospace';
-  ctx.fillText('✔ 85%+ GROSS PROFIT MARGIN • ZERO SERVER AT CHECKOUT', 60, 440);
+  ctx.font = 'bold 36px sans-serif';
+  ctx.fillText('✔ USERS PAY NOTHING  ·  PHONES DO THE WORK', 60, 440, W);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.anisotropy = 8;
@@ -841,21 +842,22 @@ function createCryptoHologramTexture() {
 
   ctx.fillStyle = '#c084fc';
   ctx.font = 'bold 40px monospace';
-  ctx.fillText('🔐 HARDWARE SECURITY SEAL (ON-DEVICE)', 60, 80);
+  const W = 904; // canvas text never runs past the sign's edge
+  ctx.fillText('🔐 SEALED ON THE PHONE ITSELF', 60, 80, W);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 56px sans-serif';
-  ctx.fillText('Uncopyable Digital Signature Seal', 60, 160);
+  ctx.fillText('A Payment Nobody Can Fake', 60, 160, W);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '36px monospace';
-  ctx.fillText('• Sequential Numbered Receipt: Check #101 ➔ #102', 60, 235);
-  ctx.fillText('• Anti-Duplicate Safeguard: Duplicate Checks Rejected', 60, 300);
-  ctx.fillText('• Daily Offline Limit: Capped at Rs. 2,000 Reserve', 60, 365);
+  ctx.font = '36px sans-serif';
+  ctx.fillText('• Signed by a key locked in the phone chip', 60, 235, W);
+  ctx.fillText('• Serial-numbered: #101 → #102, never reused', 60, 300, W);
+  ctx.fillText('• Offline vault capped at Rs. 5,000', 60, 365, W);
 
   ctx.fillStyle = '#10b981';
-  ctx.font = 'bold 38px sans-serif';
-  ctx.fillText('✔ TAMPER-PROOF HARDWARE SEAL • ZERO DOUBLE-SPENDING', 60, 440);
+  ctx.font = 'bold 36px sans-serif';
+  ctx.fillText('✔ EDITED? REJECTED  ·  COPIED? FROZEN', 60, 440, W);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.anisotropy = 8;
@@ -925,27 +927,28 @@ function createDisasterHUDTexture() {
 
   ctx.fillStyle = '#f43f5e';
   ctx.font = 'bold 40px monospace';
-  ctx.fillText('🚨 DISASTER PROTOCOL: ACTIVE (EARTHQUAKE / FLOOD)', 60, 80);
+  const W = 904; // canvas text never runs past the sign's edge
+  ctx.fillText('📡 SIGNAL: 0 BARS  ·  TOWER DOWN', 60, 80, W);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 58px sans-serif';
-  ctx.fillText('Aegis Financial Resilience Grid', 60, 160);
+  ctx.fillText('Payments Keep Moving', 60, 160, W);
 
-  ctx.fillStyle = '#e2e8f0';
+  ctx.fillStyle = '#fca5a5';
   ctx.font = '36px sans-serif';
-  ctx.fillText('• Telecom Grid: DOWN ❌ • Cellular Data: 0 Bars', 60, 235);
+  ctx.fillText('• Cloud wallets: spinning, then failed ✖', 60, 235, W);
 
   ctx.fillStyle = '#4ade80';
-  ctx.font = 'bold 36px monospace';
-  ctx.fillText('• OfflinePay: 100% OPERATIONAL ✔ (Zero Interruption)', 60, 300);
+  ctx.font = 'bold 36px sans-serif';
+  ctx.fillText('• OfflinePay: paid in about 2 seconds ✔', 60, 300, W);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = '34px sans-serif';
-  ctx.fillText('• Essential rations, emergency clinics & supplies continue', 60, 365);
+  ctx.fillText('• Shops, clinics & buses keep selling', 60, 365, W);
 
   ctx.fillStyle = '#facc15';
-  ctx.font = 'bold 36px monospace';
-  ctx.fillText('🛡️ PROTECTING 30M+ CITIZENS IN CRITICAL DEAD ZONES', 60, 440);
+  ctx.font = 'bold 36px sans-serif';
+  ctx.fillText('🛡️ CASH RELIABILITY  ·  DIGITAL RECORDS', 60, 440, W);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.anisotropy = 8;
@@ -964,10 +967,10 @@ const SLIDES = [
     subtitle: 'Real eSewa, Khalti &amp; mobile-banking users, in their own words',
     videoSrc: 'problem-live.mp4',
     bullets: [
-      { icon: '📡', text: 'Signal Dead Zones', glow: 'glow-red' },
-      { icon: '⏳', text: 'Endless Payment Timeouts', glow: 'glow-orange' },
-      { icon: '🛑', text: 'Checkout Lines Freeze', glow: 'glow-rose' },
-      { icon: '💵', text: 'Forced Back to Cash', glow: 'glow-amber' }
+      { icon: '📡', text: 'Signal Dead Zones', tag: 'Basements · Hills · Buses', glow: 'glow-red' },
+      { icon: '⏳', text: 'Endless Payment Timeouts', tag: 'Spins, then fails', glow: 'glow-orange' },
+      { icon: '🛑', text: 'Checkout Lines Freeze', tag: 'Whole queue waits', glow: 'glow-rose' },
+      { icon: '💵', text: 'Forced Back to Cash', tag: 'No records left', glow: 'glow-amber' }
     ],
     prompter: {
       pitchScript: `"Good morning, judges. Raise your hand if a digital payment has ever just… spun. And spun. Don't tell me. Let them tell you. These are real eSewa, Khalti and mobile-banking users. Different apps, same story: the signal drops, the payment dies, and everyone goes back to cash. That's the problem we solved."`,
@@ -987,13 +990,13 @@ const SLIDES = [
     kicker: 'Slide 2 • Live Demo',
     kickerType: 'normal',
     title: 'Pay With <span class="highlight-green">Zero Bars</span>',
-    subtitle: 'Both phones offline. Watch the money move anyway.',
+    subtitle: 'Two QR scans. Zero bars. Paid in about two seconds.',
     demoSteps: [
-      'Merchant shows a QR',
-      'Customer scans &amp; confirms Rs. 150',
-      'Phone seals voucher #102',
-      'Merchant verifies it offline',
-      'Signal returns: auto-sync'
+      'Merchant shows a payment QR',
+      'Customer scans &amp; confirms',
+      'Phone signs the payment',
+      'Merchant scans &amp; verifies offline',
+      'Back online: auto-settles'
     ],
     videoCues: [0, 11, 15.5, 19, 22, 44], // seconds in offlinepay-demo.mp4 where steps 1-5 begin
     bullets: [],
@@ -1017,20 +1020,21 @@ const SLIDES = [
     kicker: 'Slide 3 • Security',
     kickerType: 'purple',
     title: 'Money You <span class="highlight-cyan">Can\'t Copy</span>',
-    subtitle: 'Bank-grade security, explained like a checkbook',
+    subtitle: 'Bank-grade security, explained like a chequebook',
     bullets: [
-      { icon: '🔏', text: 'A Hardware Seal on Every Payment', glow: 'glow-cyan' },
-      { icon: '🔢', text: 'Serial-Numbered. Never Reusable.', glow: 'glow-purple' },
-      { icon: '🛡️', text: 'Rs. 2,000 Daily Offline Cap', glow: 'glow-cyan' }
+      { icon: '🔏', text: 'Signed Inside the Phone\'s Chip', tag: 'Key never leaves', glow: 'glow-cyan' },
+      { icon: '🔢', text: 'Serial-Numbered, Never Reusable', tag: '#101 → #102', glow: 'glow-purple' },
+      { icon: '🚫', text: 'Edited Payments Rejected Instantly', tag: 'Shown in demo', glow: 'glow-cyan' },
+      { icon: '🛡️', text: 'Rs. 5,000 Offline Vault Cap', tag: 'Loss always small', glow: 'glow-purple' }
     ],
     actionBtn: { text: '🔐 Verify Security Seals [Space]', fn: 'verifyHashChain' },
     prompter: {
-      pitchScript: `"Now you're thinking: can't someone just copy that voucher and spend it twice? Think of a checkbook. Every payment carries a seal that only that phone's security chip can make, and a serial number: cheque 101, 102, 103. Reuse 101, and it's rejected instantly. And offline spending is capped at two thousand rupees a day, so the worst case is always small."`,
-      technicalHighlight: `Three locks: (1) a signing key that never leaves the phone's secure hardware, (2) a counter that only goes up, so every voucher number is used once, (3) a daily offline limit that caps any possible loss.`,
+      pitchScript: `"Now you're thinking: can't someone just copy that voucher and spend it twice? Think of a checkbook. Every payment carries a seal that only that phone's security chip can make, and a serial number: cheque 101, 102, 103. Reuse 101, and it's rejected instantly. Change the amount, and the seal breaks: you saw that in the demo. And each phone can hold at most five thousand rupees offline, so the worst case is always small."`,
+      technicalHighlight: `Three locks: (1) a signing key that never leaves the phone's secure hardware, (2) a counter that only goes up, so every voucher number is used once, (3) an offline vault limit of Rs. 5,000 per phone that caps any possible loss.`,
       demoCue: `Press [Space] to fire "Verify Security Seals". Point at the chained seal tokens on the right as they light up.`,
       anticipatedQA: [
         { q: 'What if someone hacks or roots their phone?', a: 'The signing key lives inside the phone\'s secure hardware chip, the same one that protects fingerprints and Face ID. Even the phone\'s own operating system can\'t read it out.' },
-        { q: 'What if I spend the same money on two merchants while offline?', a: 'The duplicate serial number is caught the moment either merchant syncs. The account is flagged and frozen, and because wallets are KYC-verified, we know exactly who did it. With a Rs. 2,000 cap, fraud just isn\'t worth it.' },
+        { q: 'What if I spend the same money on two merchants while offline?', a: 'The duplicate serial number is caught the moment either merchant syncs. The account is flagged and frozen, and because wallets are KYC-verified, we know exactly who did it. With a Rs. 5,000 cap, fraud just isn\'t worth it.' },
         { q: 'What if the customer doesn\'t actually have the money?', a: 'Offline spending comes from a small pre-loaded offline balance, set aside while online. You can\'t spend money you didn\'t reserve.' }
       ]
     }
@@ -1044,9 +1048,9 @@ const SLIDES = [
     title: 'Built for Where <span class="highlight-cyan">Signal Fails</span>',
     subtitle: 'Three places where payments can\'t wait for signal',
     bullets: [
-      { icon: '🛵', text: 'Ride-Sharing Platforms', glow: 'glow-cyan' },
-      { icon: '🏪', text: 'General Stores', glow: 'glow-green' },
-      { icon: '📡', text: 'Low-Tower Places', glow: 'glow-cyan' }
+      { icon: '🛵', text: 'Ride-Sharing Platforms', tag: 'Fare due anywhere', glow: 'glow-cyan' },
+      { icon: '🏪', text: 'General Stores', tag: 'No queue waits', glow: 'glow-green' },
+      { icon: '📡', text: 'Low-Tower Places', tag: 'Hills &amp; small towns', glow: 'glow-cyan' }
     ],
     actionBtn: { text: '📍 Next Place [Space]', fn: 'scanUserSegments' },
     prompter: {
@@ -1069,9 +1073,10 @@ const SLIDES = [
     title: 'An Engine, <span class="highlight-green">Not Another Wallet</span>',
     subtitle: 'We plug into the apps Nepal already trusts',
     bullets: [
-      { icon: '🧩', text: 'Drop-in SDK for eSewa &amp; Khalti', glow: 'glow-green' },
-      { icon: '💰', text: 'Micro-Fee per Offline Settlement', glow: 'glow-cyan' },
-      { icon: '📈', text: 'Wallets Win Back Lost Payments', glow: 'glow-green' }
+      { icon: '🧩', text: 'Drop-in SDK for eSewa &amp; Khalti', tag: 'No new app', glow: 'glow-green' },
+      { icon: '💰', text: 'Micro-Fee per Offline Payment', tag: 'A few paisa each', glow: 'glow-cyan' },
+      { icon: '📈', text: 'Wallets Win Back Lost Payments', tag: 'Revenue rescued', glow: 'glow-green' },
+      { icon: '🏦', text: 'We Never Hold Customer Money', tag: 'Partner\'s licence', glow: 'glow-cyan' }
     ],
     actionBtn: { text: '💰 Inspect Economics [Space]', fn: 'inspectEconomics' },
     prompter: {
@@ -1101,6 +1106,7 @@ const SLIDES = [
         { label: 'Automatic records', cells: [['red', '✖ None'], ['green', '✔ Yes'], ['green', '✔ Yes']] },
         { label: 'Checkout speed', cells: [['cyan', 'Counting change'], ['red', 'Spins & times out'], ['green', '⚡ ~2 seconds']] },
         { label: 'Theft &amp; loss risk', cells: [['red', '✖ High'], ['green', '✔ Low'], ['green', '✔ Low, capped']] },
+        { label: 'Fake or copied payments', cells: [['red', '✖ Counterfeits'], ['green', '✔ Blocked'], ['green', '✔ Blocked offline']] },
         { label: 'Extra hardware', cells: [['cyan', 'None'], ['cyan', 'None'], ['green', '✔ None']], highlight: true }
       ]
     },
@@ -1125,10 +1131,11 @@ const SLIDES = [
     title: 'Three Ways <span class="highlight-green">We Get Paid</span>',
     subtitle: 'Users pay nothing extra. Partners earn back what they lose.',
     bullets: [
-      { icon: '💸', text: 'Wallet Fee Split · Rs. 0.10–0.25 / Payment', glow: 'glow-green' },
-      { icon: '🏪', text: 'Fleet &amp; Canteen Plans · Rs. 200–500 / Month', glow: 'glow-cyan' },
-      { icon: '🏦', text: 'Bank SDK Licences · Annual', glow: 'glow-green' }
+      { icon: '💸', text: 'Wallet Fee Split', tag: 'Rs. 0.10–0.25 / payment', glow: 'glow-green' },
+      { icon: '🏪', text: 'Fleet &amp; Canteen Plans', tag: 'Rs. 200–500 / month', glow: 'glow-cyan' },
+      { icon: '🏦', text: 'Bank SDK Licences', tag: 'Annual', glow: 'glow-green' }
     ],
+    ask: { title: '🤝 Our Ask', items: ['One wallet or bank pilot partner', 'Mentorship &amp; introductions'] },
     actionBtn: { text: '💰 Ignite Revenue Streams [Space]', fn: 'igniteRevenue' },
     prompter: {
       pitchScript: `"How do we make money? Three ways. One: wallets share ten to twenty-five paisa on every offline payment we rescue, money they'd otherwise lose completely. Two: bus fleets and canteens pay a small monthly plan for their dashboard. Three: banks license our engine every year. Users pay nothing. Our ask today: help us land our first pilot partner. Thank you."`,
@@ -2780,6 +2787,7 @@ class PresentationApp {
                 <div class="problem-bullet-item ${b.glow || 'glow-red'}" style="--i:${bi}">
                   <span class="pbullet-icon-wrapper">${b.icon}</span>
                   <span class="pbullet-text">${b.text}</span>
+                  ${b.tag ? `<span class="bullet-tag">${b.tag}</span>` : ''}
                 </div>
               `).join('')}
             </div>
@@ -2912,6 +2920,7 @@ class PresentationApp {
               <div class="bullet-item ${b.glow || ''}" style="--i:${bi}">
                 <span class="bullet-icon">${b.icon}</span>
                 <span class="bullet-text">${b.text}</span>
+                ${b.tag ? `<span class="bullet-tag">${b.tag}</span>` : ''}
               </div>
             `).join('')}
           </div>
@@ -2954,9 +2963,15 @@ class PresentationApp {
               <div class="bullet-item ${b.glow || ''}${data.id === 'target-users' && bi === 0 ? ' eco-active' : ''}" style="--i:${bi}"${data.id === 'target-users' ? ` data-eco-scene="${bi}" onclick="presentation.jumpEcoScene(${bi})"` : ''}>
                 <span class="bullet-icon">${b.icon}</span>
                 <span class="bullet-text">${b.text}</span>
+                ${b.tag ? `<span class="bullet-tag">${b.tag}</span>` : ''}
               </div>
             `).join('')}
           </div>
+          ${data.ask ? `
+            <div class="ask-card">
+              <div class="ask-title">${data.ask.title}</div>
+              <ul>${data.ask.items.map(t => `<li>${t}</li>`).join('')}</ul>
+            </div>` : ''}
           ${data.actionBtn ? `
             <button class="slide-action-btn"${data.id === 'target-users' ? ' data-eco-action' : ''} onclick="presentation.triggerSlideAction('${data.actionBtn.fn}')">
               ${data.actionBtn.text}
@@ -3194,10 +3209,10 @@ class PresentationApp {
 
     const captions = [
       'Both phones go into airplane mode and stay offline the whole time.',
-      'The merchant shows a payment QR. No internet on either phone.',
-      'The customer scans it and confirms Rs. 150.',
-      'The customer\'s phone seals a voucher and passes it across, phone to phone.',
-      'The merchant\'s phone checks the seal itself. Paid.',
+      'The merchant shows a payment QR for Rs. 150. No internet on either phone.',
+      'Scan 1: the customer scans the merchant\'s QR and confirms.',
+      'The customer\'s phone signs the payment and shows it as a new QR.',
+      'Scan 2: the merchant scans it and checks the signature on the spot. Paid.',
       'Signal is back: both phones settle with the wallet automatically.'
     ];
     const caption = document.getElementById('demo-caption');

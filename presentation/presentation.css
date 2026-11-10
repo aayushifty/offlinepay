@@ -2650,3 +2650,34 @@ button:focus-visible, .slide-dot:focus-visible { outline: 2px solid var(--accent
 }
 .bullet-item.eco-active .bullet-icon,
 .bullet-item.eco-active .bullet-text { opacity: 1; }
+
+/* Final-pitch polish (v57): stat tag on each bullet, and the closing ask card */
+.bullet-item, .problem-bullet-item { align-items: center; }
+.bullet-tag {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  font: 700 clamp(11px, 0.78vw, 14px) var(--font-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.glow-green .bullet-tag { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
+.glow-cyan .bullet-tag { color: #67e8f9; border-color: rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.08); }
+.glow-purple .bullet-tag { color: #d8b4fe; border-color: rgba(192, 132, 252, 0.4); background: rgba(192, 132, 252, 0.1); }
+.problem-bullet-item .bullet-tag { color: #fda4af; border-color: rgba(244, 63, 94, 0.35); background: rgba(244, 63, 94, 0.08); }
+.ask-card {
+  margin-top: 16px;
+  padding: 16px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(0, 240, 255, 0.07));
+  box-shadow: 0 0 36px rgba(16, 185, 129, 0.18);
+}
+.ask-title { font: 800 clamp(13px, 0.95vw, 16px) var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: #34d399; }
+.ask-card ul { margin: 8px 0 0; padding-left: 20px; }
+.ask-card li { font-size: clamp(16px, 1.15vw, 20px); font-weight: 700; color: #fff; line-height: 1.5; }
+.ask-card li::marker { color: #34d399; }
